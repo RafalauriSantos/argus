@@ -21,7 +21,6 @@ Metodologia derivada do `casa-de-leiloes`.
 | **5** | **Telegram Rico & Webhook Inbox** | Alto | 🟢 Concluído | Layout rico do WorkHunter portado para o Telegram + rota de webhook para envio de links manuais pelo celular. |
 | **6** | **Virada de Chave & Aposentadoria Local** | Normal | 🟢 Concluído | Serviços locais systemd desativados (`workhunter.service`, `workhunter-monitor.service`). Operação 100% transferida para a nuvem. |
 | **7** | **Maximização de Inteligência & Relatório Diário** | Normal | 🟢 Concluído | Análise de densidade de evidência (`LOW`, `MEDIUM`, `HIGH`), novas fontes GitHub e relatório diário consolidado das 24h disparado via cron das 20h BRT. |
-| **8** | **Comandos Interativos no Telegram** | Normal | 🟢 Concluído | Processamento no webhook de `/start`, `/ajuda`, `/relatorio`, `/status`, `/ultimas`, `/fontes`, `/problemas` direto pelo bot. |
-| **9** | **Paridade Total: Normalizador de URLs & Coletor GeekHunter** | Normal | 🟡 Em Progresso | Normalizador canônico com decodificação Gupy Base64, resolvedor de redirecionamento `lnkd.in` seguro e novo adaptador GeekHunter (`src/adapters/geekhunter.ts`). |
+| **9** | **Paridade Total: Normalizador de URLs & Coletor GeekHunter** | Normal | 🟢 Concluído | Normalizador canônico com decodificação Gupy Base64, resolvedor de redirecionamento `lnkd.in` seguro e novo adaptador GeekHunter (`src/adapters/geekhunter.ts`). |
 
 
