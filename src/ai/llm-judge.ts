@@ -106,7 +106,7 @@ export class LlmJudge {
   constructor(options: LlmJudgeOptions) {
     this.profile = options.profile;
     this.geminiApiKey = options.geminiApiKey;
-    this.geminiModel = options.geminiModel || "gemini-2.5-flash-lite";
+    this.geminiModel = options.geminiModel || "gemini-3.5-flash-lite";
     this.openrouterApiKey = options.openrouterApiKey;
     this.openrouterModel = options.openrouterModel || "google/gemini-2.5-flash-lite";
     this.fetcher = options.fetcher || fetch;
