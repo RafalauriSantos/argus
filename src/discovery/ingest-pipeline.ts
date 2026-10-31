@@ -3,6 +3,7 @@ import { evaluateVacancyScope } from "../decision/scope-analyzer";
 import type { UserProfile } from "../domain/profile";
 import { DEFAULT_USER_PROFILE } from "../domain/profile";
 import { createVacancy } from "../domain/vacancy";
+import { normalizeJobUrl } from "./url-resolver";
 
 export interface DiscoveredObservation {
   sourceId: string;
@@ -35,6 +36,8 @@ export class IngestPipeline {
   ) {}
 
   async processObservation(obs: DiscoveredObservation): Promise<IngestResult> {
+    const canonicalUrl = normalizeJobUrl(obs.canonicalUrl);
+
     // 1. Avaliação de Escopo & Perfil (Cérebro do WorkHunter)
     const scope = evaluateVacancyScope(
       obs.title,
@@ -52,7 +55,7 @@ export class IngestPipeline {
         title: obs.title,
         stage: "scope_analyzer",
         reason: scope.reason,
-        url: obs.canonicalUrl,
+        url: canonicalUrl,
         publishedAt: obs.publishedAt || "",
       });
 
@@ -65,7 +68,7 @@ export class IngestPipeline {
 
     // 3. Se a vaga for aceita, cria a entidade canônica de vaga
     const vacancy = createVacancy({
-      canonicalUrl: obs.canonicalUrl,
+      canonicalUrl,
       title: obs.title,
       organization: obs.organization,
       location: obs.location,

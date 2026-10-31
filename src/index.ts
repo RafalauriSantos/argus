@@ -4,6 +4,7 @@ import { GupyAdapter } from "./adapters/gupy";
 import { TramposAdapter } from "./adapters/trampos";
 import { GoogleNewsRssAdapter } from "./adapters/rss";
 import { LinkedInGuestAdapter } from "./adapters/linkedin-guest";
+import { GeekHunterAdapter } from "./adapters/geekhunter";
 import type { SourceAdapter } from "./adapters/adapter";
 import { consumeMessage } from "./queue/consumer";
 import type { DiscoveryTaskMessage } from "./queue/messages";
@@ -50,7 +51,9 @@ export function createAdapters(sources: SourceDefinition[], fetcher?: typeof fet
             ? new TramposAdapter(source, initialQueries, undefined, fetcher)
             : source.adapterId === "linkedin-guest"
               ? new LinkedInGuestAdapter(source, initialQueries, undefined, fetcher)
-              : new GoogleNewsRssAdapter(source, initialQueries, undefined, fetcher),
+              : source.adapterId === "geekhunter"
+                ? new GeekHunterAdapter(source, initialQueries, undefined, fetcher)
+                : new GoogleNewsRssAdapter(source, initialQueries, undefined, fetcher),
   ]));
 }
 
@@ -211,13 +214,24 @@ const worker = {
           if (env.DATABASE_URL) {
             const { PostgresStore } = await import("./storage/postgres-store");
             const { IngestPipeline } = await import("./discovery/ingest-pipeline");
+            const { resolveShortUrl } = await import("./discovery/url-resolver");
+
+            const canonicalUrl = await resolveShortUrl(parsed.extractedUrl, fetch);
+            if (!canonicalUrl) {
+              if (env.TELEGRAM_BOT_TOKEN) {
+                const client = createTelegramClient(env.TELEGRAM_BOT_TOKEN, parsed.chatId);
+                await client.send("⚠️ Link não reconhecido ou domínio não suportado pelo radar.");
+              }
+              return Response.json({ status: "ignored", reason: "untrusted_or_invalid_url" });
+            }
+
             const store = new PostgresStore(env.DATABASE_URL);
             const pipeline = new IngestPipeline(store);
 
             const result = await pipeline.processObservation({
               sourceId: "telegram-manual",
               sourceVacancyId: "manual_" + Date.now(),
-              canonicalUrl: parsed.extractedUrl,
+              canonicalUrl,
               title: "Vaga Manual via Telegram",
               organization: "Pendente de análise",
               location: "Remoto",
@@ -230,8 +244,8 @@ const worker = {
             if (env.TELEGRAM_BOT_TOKEN) {
               const client = createTelegramClient(env.TELEGRAM_BOT_TOKEN, parsed.chatId);
               const replyMsg = result.status === "ACCEPTED"
-                ? `✅ Vaga registrada no radar!\nPontuação: ${result.score}\n🔗 ${parsed.extractedUrl}`
-                : `⚠️ Vaga descartada pelos filtros de perfil.\nMotivo: ${result.rejectionReason}\n🔗 ${parsed.extractedUrl}`;
+                ? `✅ Vaga registrada no radar!\nPontuação: ${result.score}\n🔗 ${canonicalUrl}`
+                : `⚠️ Vaga descartada pelos filtros de perfil.\nMotivo: ${result.rejectionReason}\n🔗 ${canonicalUrl}`;
               await client.send(replyMsg);
             }
 
