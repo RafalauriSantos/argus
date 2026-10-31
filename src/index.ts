@@ -164,6 +164,55 @@ const worker = {
       );
       return Response.json({ delivery: result.kind });
     }
+    if (pathname === "/telegram/webhook" && request.method === "POST") {
+      const secretHeader = request.headers.get("x-telegram-bot-api-secret-token");
+      if (env.OPERATIONS_TOKEN && secretHeader && secretHeader !== env.OPERATIONS_TOKEN) {
+        return Response.json({ error: "unauthorized" }, { status: 401 });
+      }
+      try {
+        const body = await request.json();
+        const { parseTelegramWebhookUpdate } = await import("./notifications/telegram-rich");
+        const parsed = parseTelegramWebhookUpdate(body);
+        if (!parsed.valid || !parsed.extractedUrl || !parsed.chatId) {
+          return Response.json({ status: "ignored", reason: "no_valid_url" });
+        }
+
+        if (env.DATABASE_URL) {
+          const { PostgresStore } = await import("./storage/postgres-store");
+          const { IngestPipeline } = await import("./discovery/ingest-pipeline");
+          const store = new PostgresStore(env.DATABASE_URL);
+          const pipeline = new IngestPipeline(store);
+
+          const result = await pipeline.processObservation({
+            sourceId: "telegram-manual",
+            sourceVacancyId: "manual_" + Date.now(),
+            canonicalUrl: parsed.extractedUrl,
+            title: "Vaga Manual via Telegram",
+            organization: "Pendente de análise",
+            location: "Remoto",
+            workModel: "unknown",
+            descriptionSummary: parsed.rawText,
+            queryId: "manual_inbox",
+            observedAt: new Date().toISOString(),
+          });
+
+          if (env.TELEGRAM_BOT_TOKEN) {
+            const client = createTelegramClient(env.TELEGRAM_BOT_TOKEN, parsed.chatId);
+            const replyMsg = result.status === "ACCEPTED"
+              ? `✅ Vaga registrada no radar!\nPontuação: ${result.score}\n🔗 ${parsed.extractedUrl}`
+              : `⚠️ Vaga descartada pelos filtros de perfil.\nMotivo: ${result.rejectionReason}\n🔗 ${parsed.extractedUrl}`;
+            await client.send(replyMsg);
+          }
+
+          return Response.json({ status: "processed", result });
+        }
+
+        return Response.json({ status: "received", url: parsed.extractedUrl });
+      } catch (err) {
+        const errorName = err instanceof Error ? err.name : "UnknownError";
+        return Response.json({ error: "webhook_failed", errorName }, { status: 500 });
+      }
+    }
     return new Response("Not found", { status: 404 });
   },
 

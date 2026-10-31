@@ -18,5 +18,5 @@ Metodologia derivada do `casa-de-leiloes`.
 | **2** | **Transplante do Cérebro (Perfil & Escopo)** | Alto | 🟢 Concluído | `profile.json` portado para TS com regras de senioridade, localização e restrições. Vaga Pleno com escopo de entrada aprovada. |
 | **3** | **Pipeline de Ingestão: Adapters -> Scope Analyzer -> Neon** | Alto | 🟢 Concluído | Adapters (Gupy, Greenhouse, etc.) passam pelo ScopeAnalyzer e gravam no Neon sem duplicação e com auditoria de rejeição. |
 | **4** | **Juiz de IA (LLM Judge Semântico)** | Alto | 🟢 Concluído | Chamada controlada de IA pós-filtro determinístico avaliando compatibilidade de stack e lacunas a treinar. |
-| **5** | **Telegram Rico & Webhook Inbox** | Alto | ⚪ Pendente | Layout rico do WorkHunter portado para o Telegram + rota de webhook para envio de links manuais pelo celular. |
+| **5** | **Telegram Rico & Webhook Inbox** | Alto | 🟢 Concluído | Layout rico do WorkHunter portado para o Telegram + rota de webhook para envio de links manuais pelo celular. |
 | **6** | **Virada de Chave & Aposentadoria Local** | Normal | ⚪ Pendente | Teste de 48h em paralelo, parada dos serviços locais do systemd e arquivamento definitivo. |

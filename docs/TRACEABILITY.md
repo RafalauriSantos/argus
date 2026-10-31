@@ -40,3 +40,13 @@ Padrão derivado do `casa-de-leiloes` e `ub-mode`.
 | **CR-4.1** | Prompt Semântico & Formato Estrito | O prompt do juiz consome o perfil e a vaga, retornando JSON estrito com contrato compatível (`is_real_job_opportunity`, `cv_compatibility_score`, `category`, etc.). | `tests/ai/llm-judge.test.ts` | 🟢 GREEN |
 | **CR-4.2** | Fallback Heurístico Resiliente | Quando chaves de API não estiverem configuradas ou o provedor falhar/estiver esgotado, faz fallback gracioso para o score do ScopeAnalyzer sem derrubar o pipeline. | `tests/ai/llm-judge.test.ts` | 🟢 GREEN |
 | **CR-4.3** | Multi-Provider Chain (Gemini -> OpenRouter) | Se Gemini falhar com 429/500, a cadeia tenta o OpenRouter antes de desistir. | `tests/ai/llm-judge.test.ts` | 🟢 GREEN |
+
+---
+
+## Núcleo 5: Telegram Rico & Webhook Inbox Manual
+
+| ID | Requisito de Negócio / Engenharia | Comportamento Esperado | Teste Automatizado | Status |
+|---|---|---|---|---|
+| **CR-5.1** | Card Rico HTML com Evidências de Stack | O card do Telegram formata em HTML limpo: título em negrito, empresa, modalidade, tempo de publicação, stack aderente e lacunas a desenvolver. | `tests/notifications/telegram-rich.test.ts` | 🟢 GREEN |
+| **CR-5.2** | Webhook de Ingestão Manual com Autenticação | Endpoint `/telegram/webhook` recebe URLs enviadas via chat do Telegram, valida secret token e extrai link de vaga válido. | `tests/notifications/telegram-rich.test.ts` | 🟢 GREEN |
+| **CR-5.3** | Deduplicação e Análise Imediata no Webhook | Ao receber link manual via webhook, processa via `IngestPipeline`, grava no Neon e responde imediatamente no chat. | `tests/notifications/telegram-rich.test.ts` | 🟢 GREEN |
