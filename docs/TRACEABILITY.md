@@ -113,4 +113,23 @@ Padrão derivado do `casa-de-leiloes` e `ub-mode`.
 | **CR-12.1** | Despacho Periódico do Outbox Neon | Busca linhas com status `pending` em `haadar.notification_outbox`, envia alertas ao Telegram e marca como `sent` com `delivered_at`. | `tests/integration/neon-outbox-dispatcher.test.ts` | 🟢 GREEN |
 | **CR-12.2** | Higienização da Base no CI | Testes de integração de pipeline limpam as próprias linhas criadas no outbox após asserção para não poluir o banco de produção. | `tests/integration/ingest-pipeline.test.ts` | 🟢 GREEN |
 
+---
+
+## Núcleo 13: URLs Públicas, Extração Viva de Metadados e Bloqueio de Senioridade
+
+| ID | Requisito de Negócio / Engenharia | Comportamento Esperado | Teste Automatizado | Status |
+|---|---|---|---|---|
+| **CR-13.1** | Extração de URLs Canônicas GeekHunter | Coleta links de vagas no padrão moderno `/pt/:company/jobs/:slug` que abrem páginas públicas reais sem redirecionar para tela de login/painel geral. | `tests/adapters/geekhunter.test.ts` | 🟢 GREEN |
+| **CR-13.2** | Extração Viva de Metadados em Links Manuais | Requisição segura com timeout via `fetchJobMetadata` para ler `<title>`, empresa e OpenGraph description quando o usuário envia apenas a URL no Telegram. | `tests/adapters/url-resolver.test.ts` | 🟢 GREEN |
+| **CR-13.3** | Bloqueio de Nível Sênior no Corpo da Vaga | O `ScopeAnalyzer` e o `IngestPipeline` rejeitam automaticamente vagas cujo título ou descrição exijam nível Sênior/Lead ou 5+ anos de experiência. | `tests/decision/senior-filter.test.ts` | 🟢 GREEN |
+
+---
+
+## Núcleo 14: Layout Minimalista e Silenciamento de Oportunidades Descartadas
+
+| ID | Requisito de Negócio / Engenharia | Comportamento Esperado | Teste Automatizado | Status |
+|---|---|---|---|---|
+| **CR-14.1** | Mensagens Minimalistas & Direto ao Ponto | Exibe título, empresa, match score e destaques objetivos (*pontos fortes* e *estudo*), sem jargões de máquina ou blocos textuais extensos. | `tests/notifications/telegram-friendly.test.ts` | 🟢 GREEN |
+| **CR-14.2** | Silenciamento de Vagas Filtradas no Telegram | Vagas que não atingem os critérios do perfil são auditadas e registradas no Neon, mas não geram alertas no Telegram, mantendo o canal 100% focado e livre de ruídos. | `src/index.ts` & `tests/notifications/telegram-friendly.test.ts` | 🟢 GREEN |
+
 
