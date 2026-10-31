@@ -44,8 +44,11 @@ export interface LinkedInGuestSourceDefinition extends SourceDefinitionBase {
   geoId: "106057199";
   timeRange: "r7200";
 }
+export interface GeekHunterSourceDefinition extends SourceDefinitionBase {
+  adapterId: "geekhunter";
+}
 
-export type SourceDefinition = GreenhouseSourceDefinition | GitHubIssuesSourceDefinition | GupySourceDefinition | TramposSourceDefinition | RssSourceDefinition | LinkedInGuestSourceDefinition;
+export type SourceDefinition = GreenhouseSourceDefinition | GitHubIssuesSourceDefinition | GupySourceDefinition | TramposSourceDefinition | RssSourceDefinition | LinkedInGuestSourceDefinition | GeekHunterSourceDefinition;
 
 export const greenhouseSources: GreenhouseSourceDefinition[] = [{
   id: "greenhouse:planetscale",
@@ -174,7 +177,28 @@ export const linkedinGuestSources: LinkedInGuestSourceDefinition[] = [
   healthKey: "linkedin-guest",
 }));
 
-export const pilotSources: SourceDefinition[] = [...greenhouseSources, ...githubIssuesSources, ...gupySources, ...tramposSources, ...rssSources, ...linkedinGuestSources];
+export const geekhunterSources: GeekHunterSourceDefinition[] = [
+  {
+    id: "geekhunter:vagas",
+    adapterId: "geekhunter",
+    organization: "GeekHunter",
+    allowedHosts: ["www.geekhunter.com.br", "geekhunter.com.br"],
+    fetchStrategy: "board_once",
+    applicableQueryFamilies: ["BROAD", "ROLE", "STACK", "CONTEXT"],
+    limits: { timeoutMs: 10_000, maxResponseBytes: 512 * 1024, maxRequestsPerTask: 1, maxRecords: 30 },
+    active: true,
+  },
+];
+
+export const pilotSources: SourceDefinition[] = [
+  ...greenhouseSources,
+  ...githubIssuesSources,
+  ...gupySources,
+  ...tramposSources,
+  ...rssSources,
+  ...linkedinGuestSources,
+  ...geekhunterSources,
+];
 
 export interface RelevanceProfile {
   roles: string[];

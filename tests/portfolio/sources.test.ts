@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { defaultRelevanceProfile, githubIssuesSources, gupySources, linkedinGuestSources, pilotSources, tramposSources } from "../../src/portfolio/sources";
+import { defaultRelevanceProfile, geekhunterSources, githubIssuesSources, gupySources, linkedinGuestSources, pilotSources, tramposSources } from "../../src/portfolio/sources";
 import { initialQueries } from "../../src/portfolio/query-portfolio";
 
 describe("public source contracts", () => {
   it("keeps every source bounded to one public board request", () => {
-    expect(pilotSources).toHaveLength(18);
+    expect(pilotSources).toHaveLength(19);
     expect(pilotSources[0]).toMatchObject({
       id: "greenhouse:planetscale",
       fetchStrategy: "board_once",
@@ -14,6 +14,7 @@ describe("public source contracts", () => {
     expect(githubIssuesSources).toHaveLength(7);
     expect(gupySources).toHaveLength(3);
     expect(tramposSources).toHaveLength(1);
+    expect(geekhunterSources).toHaveLength(1);
     expect(githubIssuesSources).toEqual(expect.arrayContaining([
       expect.objectContaining({
         adapterId: "github-issues",

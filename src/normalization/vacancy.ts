@@ -20,9 +20,9 @@ export function htmlToBoundedText(value: string, maxLength = 4_000): string {
 
 export function explicitWorkModel(...values: Array<string | undefined>): "remote" | "hybrid" | "onsite" | "unknown" {
   const text = values.filter(Boolean).join(" ").toLowerCase();
-  if (/\bhybrid\b/.test(text)) return "hybrid";
-  if (/\bremote\b/.test(text)) return "remote";
-  if (/\bon[ -]?site\b|\bin office\b/.test(text)) return "onsite";
+  if (/\b(hybrid|hibrido|híbrido)\b/.test(text)) return "hybrid";
+  if (/\b(remote|remoto)\b/.test(text)) return "remote";
+  if (/\b(on[ -]?site|in office|presencial)\b/.test(text)) return "onsite";
   return "unknown";
 }
 

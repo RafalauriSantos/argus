@@ -73,3 +73,15 @@ Padrão derivado do `casa-de-leiloes` e `ub-mode`.
 | **CR-8.4** | Diagnóstico de Gargalos (`/problemas` & `/fontes`) | Agrupa os maiores motivos de descarte e volume de vagas por fonte nas últimas 24 horas. | `tests/notifications/telegram-commands.test.ts` | 🟢 GREEN |
 | **CR-8.5** | Integração no Webhook | Rota `/telegram/webhook` detecta se a mensagem é comando ou URL, despacha e responde diretamente no chat. | `tests/notifications/telegram-rich.test.ts` | 🟢 GREEN |
 
+---
+
+## Núcleo 9: Normalizador Canônico de URLs & Adaptador GeekHunter
+
+| ID | Requisito de Negócio / Engenharia | Comportamento Esperado | Teste Automatizado | Status |
+|---|---|---|---|---|
+| **CR-9.1** | Decodificação Gupy Base64 | Links `/job/<base64>` contendo payload JSON com `jobId` numérico são canonicizados para `/jobs/<id>` evitando duplicidade. | `tests/adapters/url-resolver.test.ts` | 🔴 RED |
+| **CR-9.2** | Limpeza de Parâmetros de Tracking | Remove UTMs e tracking keys (`trk`, `trackingId`, `refId`) preservando a unicidade da URL canônica. | `tests/adapters/url-resolver.test.ts` | 🔴 RED |
+| **CR-9.3** | Resolução Segura de Encurtador LinkedIn | Resolve links curtos `lnkd.in` seguindo redirecionamento HTTP com proteção SSRF (apenas destinos de ATS confiáveis). | `tests/adapters/url-resolver.test.ts` | 🔴 RED |
+| **CR-9.4** | Coletor GeekHunter | Consulta a listagem pública de vagas tech do GeekHunter, extrai oportunidades e mapeia para o contrato `AdapterResult`. | `tests/adapters/geekhunter.test.ts` | 🔴 RED |
+
+
