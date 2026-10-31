@@ -51,4 +51,39 @@ describe("Slice 9: URL Normalization & Link Resolution", () => {
       expect(resolved).toBeNull();
     });
   });
+
+  describe("fetchJobMetadata", () => {
+    it("extrai metadados públicos (título, descrição, organização) de página confiável", async () => {
+      const { fetchJobMetadata } = await import("../../src/discovery/url-resolver");
+      const mockHtml = `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <title>Desenvolvedor Node.js em NTT DATA</title>
+            <meta name="description" content="Sobre a vaga: Estamos em busca de Desenvolvedor Backend Sênior Node.js...">
+            <meta property="og:site_name" content="GeekHunter">
+          </head>
+          <body></body>
+        </html>
+      `;
+
+      const mockFetcher: typeof fetch = async () => {
+        return new Response(mockHtml, {
+          status: 200,
+          headers: { "content-type": "text/html" },
+        });
+      };
+
+      const meta = await fetchJobMetadata("https://www.geekhunter.com/pt/ntt-data/jobs/desenvolvedor-node-js-43", mockFetcher);
+      expect(meta.title).toBe("Desenvolvedor Node.js em NTT DATA");
+      expect(meta.description).toContain("Desenvolvedor Backend Sênior Node.js");
+      expect(meta.organization).toBe("GeekHunter");
+    });
+
+    it("retorna objeto vazio para hosts não confiáveis", async () => {
+      const { fetchJobMetadata } = await import("../../src/discovery/url-resolver");
+      const meta = await fetchJobMetadata("https://site-desconhecido.com/vaga/1");
+      expect(meta).toEqual({});
+    });
+  });
 });

@@ -119,3 +119,84 @@ export async function resolveShortUrl(
     return null;
   }
 }
+
+export interface FetchedJobMetadata {
+  title?: string;
+  organization?: string;
+  description?: string;
+}
+
+/**
+ * Busca metadados públicos (OpenGraph, <title> e <meta description>) da página da vaga.
+ * Protegido com timeout e restrito a hosts confiáveis (SSRF safe).
+ */
+export async function fetchJobMetadata(
+  url: string,
+  fetcher: typeof fetch = fetch,
+): Promise<FetchedJobMetadata> {
+  try {
+    const parsed = new URL(url);
+    if (!isTrustedHost(parsed.hostname)) {
+      return {};
+    }
+
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 5000);
+
+    const response = await fetcher(url, {
+      signal: controller.signal,
+      headers: {
+        "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        accept: "text/html,application/xhtml+xml",
+      },
+    });
+    clearTimeout(timer);
+
+    if (!response.ok) return {};
+
+    const html = await response.text();
+
+    // 1. Título
+    let title: string | undefined;
+    const ogTitle = html.match(/<meta[^>]+(?:property|name)=["'](?:og:title|twitter:title)["'][^>]+content=["']([^"']+)["']/i) ||
+      html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+(?:property|name)=["'](?:og:title|twitter:title)["']/i);
+    if (ogTitle) {
+      title = ogTitle[1];
+    } else {
+      const titleTag = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+      if (titleTag) title = titleTag[1];
+    }
+
+    // 2. Descrição
+    let description: string | undefined;
+    const ogDesc = html.match(/<meta[^>]+(?:property|name)=["'](?:og:description|description|twitter:description)["'][^>]+content=["']([^"']+)["']/i) ||
+      html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+(?:property|name)=["'](?:og:description|description|twitter:description)["']/i);
+    if (ogDesc) {
+      description = ogDesc[1];
+    }
+
+    // 3. Organização / Site
+    let organization: string | undefined;
+    const ogSite = html.match(/<meta[^>]+property=["']og:site_name["'][^>]+content=["']([^"']+)["']/i) ||
+      html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:site_name["']/i);
+    if (ogSite) {
+      organization = ogSite[1];
+    }
+
+    // Se o título vier no formato "Cargo em Empresa" (ex: "Desenvolvedor Node.js em NTT DATA")
+    if (title && !organization) {
+      const parts = title.split(/\s+(?:em|na|no|at|-|\|)\s+/i);
+      if (parts.length >= 2) {
+        organization = parts[parts.length - 1].trim();
+      }
+    }
+
+    return {
+      title: title ? title.replace(/&amp;/g, "&").trim() : undefined,
+      description: description ? description.replace(/&amp;/g, "&").trim() : undefined,
+      organization: organization ? organization.replace(/&amp;/g, "&").trim() : undefined,
+    };
+  } catch {
+    return {};
+  }
+}
