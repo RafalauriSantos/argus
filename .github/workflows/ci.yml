@@ -33,13 +33,16 @@ jobs:
       - name: Install dependencies strictly
         run: npm ci
 
-      - name: 1. Strict TypeScript Compile Check (Zero Errors Allowed)
+      - name: 1. Automated Secret Leak Scanner (Zero Hardcoded Secrets Allowed)
+        run: node scripts/check-secrets.js
+
+      - name: 2. Strict TypeScript Compile Check (Zero Errors Allowed)
         run: npm run typecheck
 
-      - name: 2. Cloudflare Worker Bundle & Dry-Run Validation
+      - name: 3. Cloudflare Worker Bundle & Dry-Run Validation
         run: npx wrangler deploy --dry-run --env=""
 
-      - name: 3. Full Test Suite Execution (Vitest on Miniflare & Neon)
+      - name: 4. Full Test Suite Execution (Vitest on Miniflare & Neon)
         run: npx vitest run --fileParallelism=false
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
