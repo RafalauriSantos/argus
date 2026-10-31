@@ -1,4 +1,4 @@
-name = "haadar"
+name = "argus"
 main = "src/index.ts"
 compatibility_date = "2026-09-30"
 workers_dev = true
@@ -36,11 +36,11 @@ default_retention = { success_retention = "1 day", error_retention = "2 days" }
 
 # Remote resources are opt-in. Plain `wrangler dev` always uses local emulation.
 [env.staging]
-name = "haadar-staging"
+name = "argus-staging"
 workers_dev = true
 
 [env.production]
-name = "haadar"
+name = "argus"
 workers_dev = true
 
 [env.production.observability]

@@ -14,7 +14,7 @@ async function feedText(source: RssSourceDefinition, fetcher: typeof fetch): Pro
     allowedHosts: source.allowedHosts,
     timeoutMs: source.limits.timeoutMs,
     maxBytes: source.limits.maxResponseBytes,
-    headers: { accept: "application/rss+xml, application/xml, text/xml", "user-agent": "Haadar vacancy discovery" },
+    headers: { accept: "application/rss+xml, application/xml, text/xml", "user-agent": "Argus vacancy discovery" },
     expectedContentTypes: ["application/rss+xml", "application/xml", "text/xml"],
     fetcher,
   });

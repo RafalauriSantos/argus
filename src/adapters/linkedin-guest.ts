@@ -33,7 +33,7 @@ export class LinkedInGuestAdapter implements SourceAdapter {
         allowedHosts: this.source.allowedHosts,
         headers: {
           accept: "text/html",
-          "user-agent": "Haadar vacancy discovery",
+          "user-agent": "Argus vacancy discovery",
           "accept-language": "pt-BR,pt;q=0.9",
         },
         fetcher: this.fetcher,

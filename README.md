@@ -98,15 +98,9 @@ node scripts/check-secrets.js
    ```bash
    npm ci
    ```
-2. Configure as variáveis em `.dev.vars`:
+2. Configure as variáveis de ambiente (consulte `.env.example`):
    ```bash
-   DATABASE_URL="postgres://usuario:senha@ep-xyz.us-east-2.aws.neon.tech/neondb?sslmode=require"
-   TELEGRAM_BOT_TOKEN="seu_token_telegram"
-   TELEGRAM_DESTINATION="seu_chat_id"
-   OPERATIONS_TOKEN="seu_segredo_para_webhook"
-   ADMIN_TRIGGER_TOKEN="seu_token_admin"
-   GEMINI_API_KEY="sua_chave_gemini"
-   OPENROUTER_API_KEY="sua_chave_openrouter"
+   cp .env.example .dev.vars
    ```
 3. Inicie o ambiente de emulação local:
    ```bash

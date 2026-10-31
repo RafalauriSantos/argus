@@ -35,7 +35,7 @@ describe("LinkedIn guest adapter", () => {
     });
     await adapter.discover(task);
     expect(requestedUrl).toBe("https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords=Desenvolvedor+Java+Junior&f_TPR=r7200&geoId=106057199&start=0");
-    expect(headers).toMatchObject({ "user-agent": "Haadar vacancy discovery", accept: "text/html" });
+    expect(headers).toMatchObject({ "user-agent": "Argus vacancy discovery", accept: "text/html" });
   });
 
   it("classifies a challenge page as blocked", async () => {

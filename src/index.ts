@@ -106,15 +106,15 @@ const worker = {
   async fetch(request: Request, env: Env, _ctx: ExecutionContext): Promise<Response> {
     const pathname = new URL(request.url).pathname;
     if (pathname === "/health") {
-      return Response.json({ service: "haadar", status: "ok" });
+      return Response.json({ service: "argus", status: "ok" });
     }
     if (pathname === "/health/db") {
       if (!env.DATABASE_URL) {
-        return Response.json({ service: "haadar", database: "unconfigured", error: "DATABASE_URL is not set" }, { status: 503 });
+        return Response.json({ service: "argus", database: "unconfigured", error: "DATABASE_URL is not set" }, { status: 503 });
       }
       const { checkDatabaseHealth } = await import("./storage/neon");
       const health = await checkDatabaseHealth(env.DATABASE_URL);
-      return Response.json({ service: "haadar", database: health }, { status: health.connected ? 200 : 503 });
+      return Response.json({ service: "argus", database: health }, { status: health.connected ? 200 : 503 });
     }
     if (pathname === "/health/operations") {
       if (!env.DB || !env.OPERATIONS_TOKEN || request.headers.get("authorization") !== `Bearer ${env.OPERATIONS_TOKEN}`) {
@@ -160,7 +160,7 @@ const worker = {
         return Response.json({ error: "delivery_not_configured" }, { status: 503 });
       }
       const result = await createTelegramClient(env.TELEGRAM_BOT_TOKEN, env.TELEGRAM_DESTINATION).send(
-        "Haadar: teste controlado do Worker para o canal de alertas.",
+        "Argus: teste controlado do Worker para o canal de alertas.",
       );
       return Response.json({ delivery: result.kind });
     }
