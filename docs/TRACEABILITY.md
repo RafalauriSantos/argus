@@ -30,3 +30,13 @@ Padrão derivado do `casa-de-leiloes` e `ub-mode`.
 | **CR-3.1** | Triagem na Ingestão do Adaptador | Quando o adapter descobre uma vaga, ela é avaliada pelo `evaluateVacancyScope`. Se elegível, salva em `haadar.vacancies`. | `tests/integration/ingest-pipeline.test.ts` | 🟢 GREEN |
 | **CR-3.2** | Auditoria de Descarte sem Duplicação | Se a vaga for rejeitada pelo Scope Analyzer (ex: Sênior ou PCD), grava em `haadar.candidate_rejections` com incremento. | `tests/integration/ingest-pipeline.test.ts` | 🟢 GREEN |
 | **CR-3.3** | Enfileiramento de Alertas Elegíveis | Vagas aprovadas com score >= 60 geram registro pendente na fila `haadar.notification_outbox`. | `tests/integration/ingest-pipeline.test.ts` | 🟢 GREEN |
+
+---
+
+## Núcleo 4: Juiz Semântico de IA (Cloudflare Worker -> Gemini / OpenRouter)
+
+| ID | Requisito de Negócio / Engenharia | Comportamento Esperado | Teste Automatizado | Status |
+|---|---|---|---|---|
+| **CR-4.1** | Prompt Semântico & Formato Estrito | O prompt do juiz consome o perfil e a vaga, retornando JSON estrito com contrato compatível (`is_real_job_opportunity`, `cv_compatibility_score`, `category`, etc.). | `tests/ai/llm-judge.test.ts` | 🟢 GREEN |
+| **CR-4.2** | Fallback Heurístico Resiliente | Quando chaves de API não estiverem configuradas ou o provedor falhar/estiver esgotado, faz fallback gracioso para o score do ScopeAnalyzer sem derrubar o pipeline. | `tests/ai/llm-judge.test.ts` | 🟢 GREEN |
+| **CR-4.3** | Multi-Provider Chain (Gemini -> OpenRouter) | Se Gemini falhar com 429/500, a cadeia tenta o OpenRouter antes de desistir. | `tests/ai/llm-judge.test.ts` | 🟢 GREEN |
