@@ -158,6 +158,117 @@ export class PostgresStore {
   }
 
   /**
+   * Obtém as últimas decisões registradas no Neon (vagas aprovadas e descartadas)
+   */
+  async getLatestDecisions(limit = 5): Promise<Array<{
+    timestamp: string;
+    source: string;
+    title: string;
+    decision: string;
+    reason: string | null;
+  }>> {
+    // Busca as últimas rejeições e vagas aceitas
+    const rejections = await this.sql`
+      SELECT 
+        last_rejected_at AS "timestamp",
+        source,
+        title,
+        'DISCARDED' AS decision,
+        reason
+      FROM haadar.candidate_rejections
+      ORDER BY last_rejected_at DESC
+      LIMIT ${limit};
+    `;
+
+    const accepted = await this.sql`
+      SELECT 
+        created_at AS "timestamp",
+        source_id AS source,
+        title,
+        'ACCEPTED' AS decision,
+        NULL::text AS reason
+      FROM haadar.vacancies
+      ORDER BY created_at DESC
+      LIMIT ${limit};
+    `;
+
+    // Unifica e ordena pelas mais recentes
+    const combined = [
+      ...rejections.map(r => ({
+        timestamp: new Date(r.timestamp as string).toISOString(),
+        source: String(r.source),
+        title: String(r.title),
+        decision: String(r.decision),
+        reason: r.reason ? String(r.reason) : null,
+      })),
+      ...accepted.map(a => ({
+        timestamp: new Date(a.timestamp as string).toISOString(),
+        source: String(a.source),
+        title: String(a.title),
+        decision: String(a.decision),
+        reason: null,
+      })),
+    ];
+
+    combined.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    return combined.slice(0, limit);
+  }
+
+  /**
+   * Obtém a distribuição de vagas por fonte nas últimas 24h
+   */
+  async getSourceBreakdown(): Promise<Array<{ source: string; count: number }>> {
+    const rows = await this.sql`
+      SELECT source_id AS source, COUNT(*)::int AS count
+      FROM haadar.vacancies
+      WHERE last_observed_at >= NOW() - INTERVAL '24 hours'
+      GROUP BY source_id
+      ORDER BY count DESC;
+    `;
+
+    return rows.map(r => ({
+      source: String(r.source),
+      count: Number(r.count),
+    }));
+  }
+
+  /**
+   * Obtém status operacional rápido do banco
+   */
+  async getStoreStatus(): Promise<{
+    dbConnected: boolean;
+    totalVacancies: number;
+    rejections24h: number;
+    lastObservedAt: string | null;
+  }> {
+    try {
+      const [vacRow] = await this.sql`
+        SELECT COUNT(*)::int AS total, MAX(last_observed_at) AS last_observed
+        FROM haadar.vacancies;
+      `;
+      const [rejRow] = await this.sql`
+        SELECT COALESCE(SUM(occurrences_count), 0)::int AS total
+        FROM haadar.candidate_rejections
+        WHERE last_rejected_at >= NOW() - INTERVAL '24 hours';
+      `;
+
+      return {
+        dbConnected: true,
+        totalVacancies: vacRow?.total || 0,
+        rejections24h: rejRow?.total || 0,
+        lastObservedAt: vacRow?.last_observed ? new Date(vacRow.last_observed as string).toISOString() : null,
+      };
+    } catch {
+      return {
+        dbConnected: false,
+        totalVacancies: 0,
+        rejections24h: 0,
+        lastObservedAt: null,
+      };
+    }
+  }
+
+  /**
    * Limpeza automática com TTL (Time-To-Live).
    * Apaga descartes com mais de X dias para manter o banco leve para sempre.
    */
@@ -170,3 +281,4 @@ export class PostgresStore {
     return result.length;
   }
 }
+

@@ -103,5 +103,29 @@ describe("Slice 5: Telegram Rich Job Card & Webhook Inbox", () => {
     const data = (await validRes.json()) as any;
     expect(data.status).toBe("received");
     expect(data.url).toBe("https://boards.greenhouse.io/empresa/jobs/123");
+
+    // 3. Processa comando interativo /ajuda ou /start
+    const cmdReq = new Request("https://haadar.internal/telegram/webhook", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-telegram-bot-api-secret-token": "valid-secret-token",
+      },
+      body: JSON.stringify({
+        update_id: 2,
+        message: {
+          message_id: 2,
+          chat: { id: 123 },
+          text: "/ajuda",
+        },
+      }),
+    });
+    const cmdRes = await worker.fetch(cmdReq, fakeEnv as any, {} as any);
+    expect(cmdRes.status).toBe(200);
+    const cmdData = (await cmdRes.json()) as any;
+    expect(cmdData.status).toBe("command_processed");
+    expect(cmdData.command).toBe("/ajuda");
+    expect(cmdData.reply).toContain("Comandos disponíveis");
   });
 });
+

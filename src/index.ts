@@ -188,41 +188,60 @@ const worker = {
         const body = await request.json();
         const { parseTelegramWebhookUpdate } = await import("./notifications/telegram-rich");
         const parsed = parseTelegramWebhookUpdate(body);
-        if (!parsed.valid || !parsed.extractedUrl || !parsed.chatId) {
-          return Response.json({ status: "ignored", reason: "no_valid_url" });
+        if (!parsed.valid || !parsed.chatId) {
+          return Response.json({ status: "ignored", reason: "no_valid_action" });
         }
 
-        if (env.DATABASE_URL) {
+        // 1. Tratamento de Comandos Interativos (/start, /relatorio, /status, /ultimas, etc.)
+        if (parsed.command) {
+          const { handleTelegramCommand } = await import("./notifications/telegram-commands");
           const { PostgresStore } = await import("./storage/postgres-store");
-          const { IngestPipeline } = await import("./discovery/ingest-pipeline");
-          const store = new PostgresStore(env.DATABASE_URL);
-          const pipeline = new IngestPipeline(store);
+          const store = env.DATABASE_URL ? new PostgresStore(env.DATABASE_URL) : ({} as any);
 
-          const result = await pipeline.processObservation({
-            sourceId: "telegram-manual",
-            sourceVacancyId: "manual_" + Date.now(),
-            canonicalUrl: parsed.extractedUrl,
-            title: "Vaga Manual via Telegram",
-            organization: "Pendente de análise",
-            location: "Remoto",
-            workModel: "unknown",
-            descriptionSummary: parsed.rawText,
-            queryId: "manual_inbox",
-            observedAt: new Date().toISOString(),
-          });
-
+          const replyText = await handleTelegramCommand(parsed.command, store);
           if (env.TELEGRAM_BOT_TOKEN) {
             const client = createTelegramClient(env.TELEGRAM_BOT_TOKEN, parsed.chatId);
-            const replyMsg = result.status === "ACCEPTED"
-              ? `✅ Vaga registrada no radar!\nPontuação: ${result.score}\n🔗 ${parsed.extractedUrl}`
-              : `⚠️ Vaga descartada pelos filtros de perfil.\nMotivo: ${result.rejectionReason}\n🔗 ${parsed.extractedUrl}`;
-            await client.send(replyMsg);
+            await client.send(replyText);
           }
-
-          return Response.json({ status: "processed", result });
+          return Response.json({ status: "command_processed", command: parsed.command, reply: replyText });
         }
 
-        return Response.json({ status: "received", url: parsed.extractedUrl });
+        // 2. Tratamento de Ingestão de Vagas por URL Manual
+        if (parsed.extractedUrl) {
+          if (env.DATABASE_URL) {
+            const { PostgresStore } = await import("./storage/postgres-store");
+            const { IngestPipeline } = await import("./discovery/ingest-pipeline");
+            const store = new PostgresStore(env.DATABASE_URL);
+            const pipeline = new IngestPipeline(store);
+
+            const result = await pipeline.processObservation({
+              sourceId: "telegram-manual",
+              sourceVacancyId: "manual_" + Date.now(),
+              canonicalUrl: parsed.extractedUrl,
+              title: "Vaga Manual via Telegram",
+              organization: "Pendente de análise",
+              location: "Remoto",
+              workModel: "unknown",
+              descriptionSummary: parsed.rawText,
+              queryId: "manual_inbox",
+              observedAt: new Date().toISOString(),
+            });
+
+            if (env.TELEGRAM_BOT_TOKEN) {
+              const client = createTelegramClient(env.TELEGRAM_BOT_TOKEN, parsed.chatId);
+              const replyMsg = result.status === "ACCEPTED"
+                ? `✅ Vaga registrada no radar!\nPontuação: ${result.score}\n🔗 ${parsed.extractedUrl}`
+                : `⚠️ Vaga descartada pelos filtros de perfil.\nMotivo: ${result.rejectionReason}\n🔗 ${parsed.extractedUrl}`;
+              await client.send(replyMsg);
+            }
+
+            return Response.json({ status: "processed", result });
+          }
+
+          return Response.json({ status: "received", url: parsed.extractedUrl });
+        }
+
+        return Response.json({ status: "ignored", reason: "unrecognized" });
       } catch (err) {
         const errorName = err instanceof Error ? err.name : "UnknownError";
         return Response.json({ error: "webhook_failed", errorName }, { status: 500 });
