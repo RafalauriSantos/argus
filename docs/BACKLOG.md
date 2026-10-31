@@ -24,5 +24,6 @@ Metodologia derivada do `casa-de-leiloes`.
 | **8** | **Comandos Interativos no Telegram** | Normal | 🟢 Concluído | Processamento no webhook de `/start`, `/ajuda`, `/relatorio`, `/status`, `/ultimas`, `/fontes`, `/problemas` direto pelo bot em linguagem natural. |
 | **9** | **Paridade Total: Normalizador de URLs & Coletor GeekHunter** | Normal | 🟢 Concluído | Normalizador canônico com decodificação Gupy Base64, resolvedor de redirecionamento `lnkd.in` seguro e novo adaptador GeekHunter (`src/adapters/geekhunter.ts`). |
 | **10** | **Integração Operacional da IA (LLM Judge no Pipeline & Telegram)** | Alto | 🟢 Concluído | Conexão do `LlmJudge` (Gemini & OpenRouter) dentro do `IngestPipeline` e no webhook do Telegram, enriquecendo vagas com análise semântica e lacunas técnicas. |
+| **11** | **Experiência Conversacional Amigável & Anti-Duplicidade** | Alto | 🟢 Concluído | Formatação humanizada no Telegram (sem jargões técnicos), extração de título/empresa no texto e detecção de vagas já cadastradas. |
 
 

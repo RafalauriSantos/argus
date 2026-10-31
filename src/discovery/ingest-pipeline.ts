@@ -28,6 +28,7 @@ export interface IngestResult {
   score?: number;
   rejectionReason?: string;
   outboxEnqueued: boolean;
+  inserted?: boolean;
   judgeResult?: JudgeEvaluationResult;
 }
 
@@ -171,6 +172,7 @@ export class IngestPipeline {
       vacancyId: upsert.vacancyId,
       score: finalScore,
       outboxEnqueued,
+      inserted: upsert.inserted,
       judgeResult,
     };
   }

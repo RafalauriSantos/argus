@@ -94,4 +94,14 @@ Padrão derivado do `casa-de-leiloes` e `ub-mode`.
 | **CR-10.2** | Enriquecimento do Telegram | O webhook do Telegram e o payload de notificação incluem categoria, recomendação, raciocínio e lacunas técnicas identificadas pela IA. | `tests/integration/ingest-pipeline-ai.test.ts` | 🟢 GREEN |
 | **CR-10.3** | Fallback Gracioso sem Chave de IA | Quando nenhuma chave de IA estiver configurada ou a API falhar, o pipeline reverte com segurança para o motor heurístico sem quebrar. | `tests/integration/ingest-pipeline-ai.test.ts` | 🟢 GREEN |
 
+---
+
+## Núcleo 11: Experiência Conversacional Amigável & Anti-Duplicidade no Telegram
+
+| ID | Requisito de Negócio / Engenharia | Comportamento Esperado | Teste Automatizado | Status |
+|---|---|---|---|---|
+| **CR-11.1** | Formatação Amigável & Sem Jargões | Substitui saídas técnicas (`heuristic_fallback`, `APPLY_NOW`, etc.) por textos naturais, encorajadores e claros em português. | `tests/notifications/telegram-friendly.test.ts` | 🟢 GREEN |
+| **CR-11.2** | Detecção de Vagas Já Cadastradas | Quando uma vaga já existir no Neon (`inserted: false`), avisa amigavelmente sem disparar alertas repetidos. | `tests/notifications/telegram-friendly.test.ts` | 🟢 GREEN |
+| **CR-11.3** | Extração Inteligente de Título & Empresa | Extrai título e empresa a partir do corpo da mensagem de texto recebida junto com o link. | `tests/notifications/telegram-friendly.test.ts` | 🟢 GREEN |
+
 
