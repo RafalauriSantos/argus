@@ -105,6 +105,23 @@ export class PostgresStore {
   }
 
   /**
+   * Enfileira alerta na fila de notificações do Neon (haadar.notification_outbox)
+   */
+  async enqueueNotification(idempotencyKey: string, channel: string, payload: Record<string, unknown>): Promise<boolean> {
+    const result = await this.sql`
+      INSERT INTO haadar.notification_outbox (
+        idempotency_key, channel, payload_json, status, attempts, created_at
+      ) VALUES (
+        ${idempotencyKey}, ${channel}, ${JSON.stringify(payload)},
+        'pending', 0, NOW()
+      )
+      ON CONFLICT (idempotency_key) DO NOTHING
+      RETURNING id;
+    `;
+    return result.length > 0;
+  }
+
+  /**
    * Limpeza automática com TTL (Time-To-Live).
    * Apaga descartes com mais de X dias para manter o banco leve para sempre.
    */

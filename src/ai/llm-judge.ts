@@ -62,16 +62,16 @@ Responda APENAS com o JSON abaixo, sem markdown, sem texto extra:
 {"is_real_job_opportunity": bool, "cv_compatibility_score": int, "potential_score": int, "declared_level": "junior|mid|senior|unknown", "operational_level": "junior|junior_to_mid|mid|senior|unknown", "mandatory_requirements": ["string"], "desirable_requirements": ["string"], "hard_barriers": ["string"], "matched_evidence": ["string"], "trainable_gaps": ["string"], "category": "COMPATIVEL|POTENCIALMENTE_COMPATIVEL|DESAFIADORA_VALIDA|INCOMPATIVEL", "reasoning": "string curta", "recommendation": "APPLY_NOW|MAYBE|SKIP"}`;
 }
 
-export function normalizeJudgeResult(raw: any, fallbackScore = 0): Omit<JudgeEvaluationResult, "source"> {
+export function normalizeJudgeResult(raw: Record<string, unknown>, fallbackScore = 0): Omit<JudgeEvaluationResult, "source"> {
   const score = typeof raw.cv_compatibility_score === "number" ? raw.cv_compatibility_score : fallbackScore;
   const potential = typeof raw.potential_score === "number" ? raw.potential_score : score;
-  const barriers: string[] = Array.isArray(raw.hard_barriers) ? raw.hard_barriers : [];
+  const barriers: string[] = Array.isArray(raw.hard_barriers) ? (raw.hard_barriers as string[]) : [];
 
   let category: JudgeEvaluationResult["category"] = "INCOMPATIVEL";
   if (barriers.length > 0) {
     category = "INCOMPATIVEL";
-  } else if (raw.category && ["COMPATIVEL", "POTENCIALMENTE_COMPATIVEL", "DESAFIADORA_VALIDA", "INCOMPATIVEL"].includes(raw.category)) {
-    category = raw.category;
+  } else if (typeof raw.category === "string" && ["COMPATIVEL", "POTENCIALMENTE_COMPATIVEL", "DESAFIADORA_VALIDA", "INCOMPATIVEL"].includes(raw.category)) {
+    category = raw.category as JudgeEvaluationResult["category"];
   } else {
     category = score >= 60 ? "COMPATIVEL" : potential >= 45 ? "POTENCIALMENTE_COMPATIVEL" : potential >= 35 ? "DESAFIADORA_VALIDA" : "INCOMPATIVEL";
   }
@@ -80,16 +80,18 @@ export function normalizeJudgeResult(raw: any, fallbackScore = 0): Omit<JudgeEva
     isRealJobOpportunity: typeof raw.is_real_job_opportunity === "boolean" ? raw.is_real_job_opportunity : true,
     score,
     potentialScore: potential,
-    declaredLevel: raw.declared_level || "unknown",
-    operationalLevel: raw.operational_level || raw.declared_level || "unknown",
-    mandatoryRequirements: Array.isArray(raw.mandatory_requirements) ? raw.mandatory_requirements : [],
-    desirableRequirements: Array.isArray(raw.desirable_requirements) ? raw.desirable_requirements : [],
+    declaredLevel: typeof raw.declared_level === "string" ? raw.declared_level : "unknown",
+    operationalLevel: typeof raw.operational_level === "string" ? raw.operational_level : typeof raw.declared_level === "string" ? raw.declared_level : "unknown",
+    mandatoryRequirements: Array.isArray(raw.mandatory_requirements) ? (raw.mandatory_requirements as string[]) : [],
+    desirableRequirements: Array.isArray(raw.desirable_requirements) ? (raw.desirable_requirements as string[]) : [],
     hardBarriers: barriers,
-    matchedEvidence: Array.isArray(raw.matched_evidence) ? raw.matched_evidence : [],
-    trainableGaps: Array.isArray(raw.trainable_gaps) ? raw.trainable_gaps : [],
+    matchedEvidence: Array.isArray(raw.matched_evidence) ? (raw.matched_evidence as string[]) : [],
+    trainableGaps: Array.isArray(raw.trainable_gaps) ? (raw.trainable_gaps as string[]) : [],
     category,
     reasoning: typeof raw.reasoning === "string" ? raw.reasoning : "",
-    recommendation: ["APPLY_NOW", "MAYBE", "SKIP"].includes(raw.recommendation) ? raw.recommendation : score >= 60 ? "APPLY_NOW" : "SKIP",
+    recommendation: typeof raw.recommendation === "string" && ["APPLY_NOW", "MAYBE", "SKIP"].includes(raw.recommendation)
+      ? (raw.recommendation as JudgeEvaluationResult["recommendation"])
+      : score >= 60 ? "APPLY_NOW" : "SKIP",
   };
 }
 
@@ -160,7 +162,7 @@ export class LlmJudge {
     return { ...heuristicNormalized, source: "heuristic_fallback" };
   }
 
-  private async callGemini(prompt: string): Promise<any> {
+  private async callGemini(prompt: string): Promise<Record<string, unknown> | null> {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${this.geminiModel}:generateContent`;
     const payload = {
       system_instruction: { parts: [{ text: "Responda somente com JSON válido." }] },
@@ -178,16 +180,19 @@ export class LlmJudge {
     });
 
     if (!res.ok) {
+      console.warn(`[LlmJudge] Gemini HTTP error: ${res.status}`);
       return null;
     }
 
-    const data = await res.json();
+    const data = (await res.json()) as {
+      candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+    };
     const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
     if (!rawText) return null;
     return JSON.parse(rawText.trim());
   }
 
-  private async callOpenrouter(prompt: string): Promise<any> {
+  private async callOpenrouter(prompt: string): Promise<Record<string, unknown> | null> {
     const url = "https://openrouter.ai/api/v1/chat/completions";
     const payload = {
       model: this.openrouterModel,
@@ -209,10 +214,13 @@ export class LlmJudge {
     });
 
     if (!res.ok) {
+      console.warn(`[LlmJudge] OpenRouter HTTP error: ${res.status}`);
       return null;
     }
 
-    const data = await res.json();
+    const data = (await res.json()) as {
+      choices?: Array<{ message?: { content?: string } }>;
+    };
     const rawText = data?.choices?.[0]?.message?.content;
     if (!rawText) return null;
     return JSON.parse(rawText.trim());

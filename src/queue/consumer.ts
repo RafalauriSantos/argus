@@ -87,7 +87,7 @@ export async function consumeMessage(input: ConsumerInput): Promise<ConsumeActio
         const pipeline = new IngestPipeline(input.postgresStore);
         await pipeline.processObservation({
           sourceId: observation.sourceId,
-          sourceVacancyId: observation.sourceVacancyId,
+          sourceVacancyId: observation.sourceVacancyId || observation.canonicalUrl,
           canonicalUrl: observation.canonicalUrl,
           title: observation.title,
           organization: observation.organization,

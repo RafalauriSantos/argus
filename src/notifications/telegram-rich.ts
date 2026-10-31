@@ -76,9 +76,17 @@ export interface ParsedTelegramWebhook {
 
 const URL_REGEX = /https?:\/\/[^\s<>"]+/i;
 
-export function parseTelegramWebhookUpdate(payload: any): ParsedTelegramWebhook {
-  const message = payload?.message;
-  if (!message || !message.chat?.id) {
+export function parseTelegramWebhookUpdate(payload: unknown): ParsedTelegramWebhook {
+  const data = payload as {
+    message?: {
+      message_id?: number;
+      chat?: { id?: number | string };
+      text?: string;
+    };
+  } | null;
+
+  const message = data?.message;
+  if (!message || message.chat?.id == null) {
     return { valid: false, chatId: null, messageId: null, extractedUrl: null, rawText: "" };
   }
 

@@ -62,7 +62,7 @@ describe("Slice 5: Telegram Rich Job Card & Webhook Inbox", () => {
       DATABASE_URL: undefined, // sem db para teste de rota
     };
 
-    // 1. Rejeita sem secret correto
+    // 1. Rejeita com token incorreto ou cabeçalho omitido
     const unauthReq = new Request("https://haadar.internal/telegram/webhook", {
       method: "POST",
       headers: {
@@ -73,6 +73,14 @@ describe("Slice 5: Telegram Rich Job Card & Webhook Inbox", () => {
     });
     const unauthRes = await worker.fetch(unauthReq, fakeEnv as any, {} as any);
     expect(unauthRes.status).toBe(401);
+
+    const missingHeaderReq = new Request("https://haadar.internal/telegram/webhook", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({}),
+    });
+    const missingHeaderRes = await worker.fetch(missingHeaderReq, fakeEnv as any, {} as any);
+    expect(missingHeaderRes.status).toBe(401);
 
     // 2. Aceita com secret correto e payload sem url
     const validReq = new Request("https://haadar.internal/telegram/webhook", {

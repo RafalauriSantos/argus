@@ -166,7 +166,7 @@ const worker = {
     }
     if (pathname === "/telegram/webhook" && request.method === "POST") {
       const secretHeader = request.headers.get("x-telegram-bot-api-secret-token");
-      if (env.OPERATIONS_TOKEN && secretHeader && secretHeader !== env.OPERATIONS_TOKEN) {
+      if (env.OPERATIONS_TOKEN && secretHeader !== env.OPERATIONS_TOKEN) {
         return Response.json({ error: "unauthorized" }, { status: 401 });
       }
       try {

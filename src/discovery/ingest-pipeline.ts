@@ -96,7 +96,6 @@ export class IngestPipeline {
     // 5. Se foi recém-inserida e atingiu o piso de relevância (score >= 60), enfileira no Outbox do Telegram
     let outboxEnqueued = false;
     if (upsert.inserted && scope.score >= 60) {
-      const client = this.store["sql"];
       const outboxPayload = {
         title: `${vacancy.title} · ${vacancy.organization || "Empresa"}`,
         organization: vacancy.organization,
@@ -108,16 +107,11 @@ export class IngestPipeline {
         stage: "final",
       };
 
-      await client`
-        INSERT INTO haadar.notification_outbox (
-          idempotency_key, channel, payload_json, status, attempts, created_at
-        ) VALUES (
-          ${"alert:" + upsert.vacancyId}, 'telegram', ${JSON.stringify(outboxPayload)},
-          'pending', 0, NOW()
-        )
-        ON CONFLICT (idempotency_key) DO NOTHING;
-      `;
-      outboxEnqueued = true;
+      outboxEnqueued = await this.store.enqueueNotification(
+        "alert:" + upsert.vacancyId,
+        "telegram",
+        outboxPayload
+      );
     }
 
     return {
