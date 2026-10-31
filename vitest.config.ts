@@ -5,10 +5,11 @@ export default defineConfig(async () => {
   const migrations = await readD1Migrations("./migrations");
 
   const fs = await import("fs");
-  let dbUrl = "";
+  let dbUrl = process.env.DATABASE_URL || "";
   try {
     const content = fs.readFileSync("./.dev.vars", "utf-8");
-    dbUrl = content.split("\n").find(l => l.startsWith("DATABASE_URL="))?.split("=", 2)[1]?.trim().replace(/^["']|["']$/g, "") || "";
+    const parsed = content.split("\n").find(l => l.startsWith("DATABASE_URL="))?.split("=", 2)[1]?.trim().replace(/^["']|["']$/g, "");
+    if (parsed) dbUrl = parsed;
   } catch {}
 
   return {

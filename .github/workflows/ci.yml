@@ -1,0 +1,45 @@
+name: CI Quality Gate
+
+on:
+  push:
+    branches:
+      - main
+      - "feat/**"
+      - "fix/**"
+  pull_request:
+    branches:
+      - main
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality-gate:
+    name: Verify Quality & Security Gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js v22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: "npm"
+
+      - name: Install dependencies strictly
+        run: npm ci
+
+      - name: 1. Strict TypeScript Compile Check (Zero Errors Allowed)
+        run: npm run typecheck
+
+      - name: 2. Cloudflare Worker Bundle & Dry-Run Validation
+        run: npx wrangler deploy --dry-run --env=""
+
+      - name: 3. Full Test Suite Execution (Vitest on Miniflare & Neon)
+        run: npx vitest run --fileParallelism=false
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
