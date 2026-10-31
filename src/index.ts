@@ -164,6 +164,21 @@ const worker = {
       );
       return Response.json({ delivery: result.kind });
     }
+    if (pathname === "/admin/daily-report" && request.method === "POST") {
+      if (!env.ADMIN_TRIGGER_TOKEN || request.headers.get("authorization") !== `Bearer ${env.ADMIN_TRIGGER_TOKEN}`) {
+        return Response.json({ error: "unauthorized" }, { status: 401 });
+      }
+      if (!env.DATABASE_URL || !env.TELEGRAM_BOT_TOKEN || !env.TELEGRAM_DESTINATION) {
+        return Response.json({ error: "reporting_not_configured" }, { status: 503 });
+      }
+      const { PostgresStore } = await import("./storage/postgres-store");
+      const { formatDailyReportMessage } = await import("./notifications/daily-report");
+      const store = new PostgresStore(env.DATABASE_URL);
+      const stats = await store.getDailyFunnelStats();
+      const reportMsg = formatDailyReportMessage(stats);
+      const delivery = await createTelegramClient(env.TELEGRAM_BOT_TOKEN, env.TELEGRAM_DESTINATION).send(reportMsg);
+      return Response.json({ report: stats, delivery: delivery.kind });
+    }
     if (pathname === "/telegram/webhook" && request.method === "POST") {
       const secretHeader = request.headers.get("x-telegram-bot-api-secret-token");
       if (env.OPERATIONS_TOKEN && secretHeader !== env.OPERATIONS_TOKEN) {
@@ -239,6 +254,22 @@ const worker = {
         obsoleteObservationsDays: 14,
         batchSize: 100,
       }, { now: scheduledAt });
+    }
+    // Dispara relatório diário de funil às 23:00 UTC (20:00 Horário de Brasília)
+    if (scheduledAt.getUTCHours() === 23 && scheduledAt.getUTCMinutes() === 0) {
+      if (env.DATABASE_URL && env.TELEGRAM_BOT_TOKEN && env.TELEGRAM_DESTINATION) {
+        try {
+          const { PostgresStore } = await import("./storage/postgres-store");
+          const { formatDailyReportMessage } = await import("./notifications/daily-report");
+          const store = new PostgresStore(env.DATABASE_URL);
+          const stats = await store.getDailyFunnelStats();
+          const reportMsg = formatDailyReportMessage(stats);
+          await createTelegramClient(env.TELEGRAM_BOT_TOKEN, env.TELEGRAM_DESTINATION).send(reportMsg);
+        } catch (error) {
+          const errorName = error instanceof Error ? error.name : "UnknownError";
+          console.error(JSON.stringify({ event: "scheduled_daily_report_failed", errorName }));
+        }
+      }
     }
     if (scheduledAt.getUTCMinutes() === 0) {
       await runDiscoveryRound(env, scheduledAt);

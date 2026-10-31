@@ -50,3 +50,13 @@ Padrão derivado do `casa-de-leiloes` e `ub-mode`.
 | **CR-5.1** | Card Rico HTML com Evidências de Stack | O card do Telegram formata em HTML limpo: título em negrito, empresa, modalidade, tempo de publicação, stack aderente e lacunas a desenvolver. | `tests/notifications/telegram-rich.test.ts` | 🟢 GREEN |
 | **CR-5.2** | Webhook de Ingestão Manual com Autenticação | Endpoint `/telegram/webhook` recebe URLs enviadas via chat do Telegram, valida secret token e extrai link de vaga válido. | `tests/notifications/telegram-rich.test.ts` | 🟢 GREEN |
 | **CR-5.3** | Deduplicação e Análise Imediata no Webhook | Ao receber link manual via webhook, processa via `IngestPipeline`, grava no Neon e responde imediatamente no chat. | `tests/notifications/telegram-rich.test.ts` | 🟢 GREEN |
+
+---
+
+## Núcleo 7: Maximização & Inteligência de Operação (Evidência, Fontes & Relatórios Diários)
+
+| ID | Requisito de Negócio / Engenharia | Comportamento Esperado | Teste Automatizado | Status |
+|---|---|---|---|---|
+| **CR-7.1** | Densidade de Evidência da Vaga | Classifica o nível de detalhe do anúncio (`LOW_EVIDENCE`, `MEDIUM_EVIDENCE`, `HIGH_EVIDENCE`) para não gastar tokens em vagas rasas/fantasmas. | `tests/decision/evidence.test.ts` | 🟢 GREEN |
+| **CR-7.2** | Expansão de Fontes GitHub | Adiciona repositórios orgânicos de vagas à lista de adaptadores do portfólio (`backend-br`, `soujava`, `react-brasil`, `nodejsdevbr`). | `tests/portfolio/sources.test.ts` | 🟢 GREEN |
+| **CR-7.3** | Relatório Diário de Funil no Telegram | Agrega do Neon o total de vagas vistas, aprovadas e o ranking dos principais motivos de descarte em formato de resumo diário. | `tests/notifications/daily-report.test.ts` | 🟢 GREEN |
