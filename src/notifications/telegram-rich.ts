@@ -71,6 +71,7 @@ export interface ParsedTelegramWebhook {
   chatId: string | null;
   messageId: number | null;
   extractedUrl: string | null;
+  command: string | null;
   rawText: string;
 }
 
@@ -87,7 +88,7 @@ export function parseTelegramWebhookUpdate(payload: unknown): ParsedTelegramWebh
 
   const message = data?.message;
   if (!message || message.chat?.id == null) {
-    return { valid: false, chatId: null, messageId: null, extractedUrl: null, rawText: "" };
+    return { valid: false, chatId: null, messageId: null, extractedUrl: null, command: null, rawText: "" };
   }
 
   const chatId = String(message.chat.id);
@@ -95,15 +96,46 @@ export function parseTelegramWebhookUpdate(payload: unknown): ParsedTelegramWebh
   const rawText = String(message.text || "").trim();
 
   const match = rawText.match(URL_REGEX);
-  if (!match) {
-    return { valid: false, chatId, messageId, extractedUrl: null, rawText };
+  if (match) {
+    return {
+      valid: true,
+      chatId,
+      messageId,
+      extractedUrl: match[0],
+      command: null,
+      rawText,
+    };
+  }
+
+  // Se não tem URL, pode ser um comando interativo
+  const firstToken = rawText.split(/\s+/)[0] || "";
+  const cleaned = firstToken.split("@")[0].toLowerCase();
+  const normalized = cleaned.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+  let command: string | null = null;
+  if (normalized.startsWith("/")) {
+    command = normalized;
+  } else {
+    const mapPlain: Record<string, string> = {
+      start: "/start",
+      ajuda: "/ajuda",
+      help: "/ajuda",
+      relatorio: "/relatorio",
+      status: "/status",
+      ultimas: "/ultimas",
+      fontes: "/fontes",
+      problemas: "/problemas",
+    };
+    command = mapPlain[normalized] || null;
   }
 
   return {
-    valid: true,
+    valid: Boolean(command),
     chatId,
     messageId,
-    extractedUrl: match[0],
+    extractedUrl: null,
+    command,
     rawText,
   };
 }
+
