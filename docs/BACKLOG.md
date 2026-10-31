@@ -1,32 +1,34 @@
-# Backlog de Migração — Haadar + WorkHunter
+# Backlog
 
-Itens de trabalho planejados para a migração completa do WorkHunter local para o Haadar na nuvem com Neon PostgreSQL.
-Metodologia derivada do `casa-de-leiloes`.
+Itens de trabalho do projeto, concluídos e pendentes. Os critérios de aceitação detalhados estão mapeados em `docs/TRACEABILITY.md` e nas decisões arquiteturais em `docs/DECISIONS.md`. Um item é considerado concluído quando seus critérios estão cobertos e verificados por testes automatizados.
 
-## Níveis de Risco:
-- **Alto:** Estrutura de banco, idempotência de deduplicação, entrega de alertas e regras eliminatórias.
-- **Normal:** Limpeza de código, relatórios e ajustes de formato.
+Níveis de risco:
+- **Alto** (banco de dados, deduplicação idempotente, entrega de alertas, filtros eliminatórios): exige testes estritos e revisão minuciosa.
+- **Normal**: revisão e aprovação pela esteira automatizada verde de integração contínua (CI).
 
----
+## Concluídos
 
-## Fatias Verticais (Slices)
+| Item | Critérios | Decisões | PR / Branch |
+|---|---|---|---|
+| Walking skeleton: Cloudflare Worker, Neon Postgres e rota de saúde | 0.1 | D1, D2 | #1 |
+| Esquema de dados, deduplicação por hash e expiração por TTL | 1.1 a 1.3 | D1 | #2 |
+| Perfil de busca, restrições e escopo operacional do candidato | 2.1 a 2.3 | | #2 |
+| Pipeline de ingestão com analisador de escopo e registro de rejeições | 3.1 a 3.3 | | #2 |
+| Juiz de IA (LLM Judge) com Gemini e OpenRouter pós-filtro | 4.1 a 4.3 | | #2 |
+| Webhook do Telegram e canal para envio manual de vagas | 5.1 a 5.3 | | #3 |
+| Desativação dos serviços systemd locais e migração total para nuvem | 6.1 | D1 | #4 |
+| Relatório diário de inteligência consolidado das 24h via cron | 7.1 a 7.3 | | #4 |
+| Comandos interativos no Telegram (/status, /relatorio, /ultimas, etc.) | 8.1 a 8.3 | | #4 |
+| Normalizador de URLs (Gupy Base64, lnkd.in seguro) e adaptador GeekHunter | 9.1 a 9.4 | | #5 |
+| Integração operacional do Juiz de IA na esteira de ingestão e webhook | 10.1 a 10.3 | | #6 |
+| Notificações humanizadas e anti-duplicação de alertas no Telegram | 11.1 a 11.3 | | #7 |
+| Despacho periódico do outbox no Neon e higienização de dados no CI | 12.1, 12.2 | | #8 |
+| URLs canônicas da GeekHunter, metadados ao vivo e bloqueio de vagas sênior | 13.1 a 13.3 | D3 | #9, #10 |
+| Notificações minimalistas no Telegram e silenciamento de vagas descartadas | 14.1, 14.2 | D4 | #11 |
 
-| Slice | Descrição | Risco | Status | Critérios de Aceitação |
+## Em aberto / Melhorias contínuas
+
+| # | Item | Critérios | Risco | Condição de conclusão |
 |---|---|---|---|---|
-| **0** | **Governança & Walking Skeleton com Neon Postgres** | Normal | 🟢 Concluído | Conexão com Neon configurada via `@neondatabase/serverless`, rota `/health/db` respondendo status do Postgres e teste automatizado verde. |
-| **1** | **Esquema de Dados, Deduplicação & TTL** | Alto | 🟢 Concluído | Tabelas `vacancies`, `vacancy_occurrences`, `candidate_rejections` no Postgres com chaves únicas estritas e rotina de expiração. Nenhuma vaga repetida grava nova linha. |
-| **2** | **Transplante do Cérebro (Perfil & Escopo)** | Alto | 🟢 Concluído | `profile.json` portado para TS com regras de senioridade, localização e restrições. Vaga Pleno com escopo de entrada aprovada. |
-| **3** | **Pipeline de Ingestão: Adapters -> Scope Analyzer -> Neon** | Alto | 🟢 Concluído | Adapters (Gupy, Greenhouse, etc.) passam pelo ScopeAnalyzer e gravam no Neon sem duplicação e com auditoria de rejeição. |
-| **4** | **Juiz de IA (LLM Judge Semântico)** | Alto | 🟢 Concluído | Chamada controlada de IA pós-filtro determinístico avaliando compatibilidade de stack e lacunas a treinar. |
-| **5** | **Telegram Rico & Webhook Inbox** | Alto | 🟢 Concluído | Layout rico do WorkHunter portado para o Telegram + rota de webhook para envio de links manuais pelo celular. |
-| **6** | **Virada de Chave & Aposentadoria Local** | Normal | 🟢 Concluído | Serviços locais systemd desativados (`workhunter.service`, `workhunter-monitor.service`). Operação 100% transferida para a nuvem. |
-| **7** | **Maximização de Inteligência & Relatório Diário** | Normal | 🟢 Concluído | Análise de densidade de evidência (`LOW`, `MEDIUM`, `HIGH`), novas fontes GitHub e relatório diário consolidado das 24h disparado via cron das 20h BRT. |
-| **8** | **Comandos Interativos no Telegram** | Normal | 🟢 Concluído | Processamento no webhook de `/start`, `/ajuda`, `/relatorio`, `/status`, `/ultimas`, `/fontes`, `/problemas` direto pelo bot em linguagem natural. |
-| **9** | **Paridade Total: Normalizador de URLs & Coletor GeekHunter** | Normal | 🟢 Concluído | Normalizador canônico com decodificação Gupy Base64, resolvedor de redirecionamento `lnkd.in` seguro e novo adaptador GeekHunter (`src/adapters/geekhunter.ts`). |
-| **10** | **Integração Operacional da IA (LLM Judge no Pipeline & Telegram)** | Alto | 🟢 Concluído | Conexão do `LlmJudge` (Gemini & OpenRouter) dentro do `IngestPipeline` e no webhook do Telegram, enriquecendo vagas com análise semântica e lacunas técnicas. |
-| **11** | **Experiência Conversacional Amigável & Anti-Duplicidade** | Alto | 🟢 Concluído | Formatação humanizada no Telegram (sem jargões técnicos), extração de título/empresa no texto e detecção de vagas já cadastradas. |
-| **12** | **Despachador Automático do Outbox Neon & Higienização de CI** | Alto | 🟢 Concluído | Consumo periódico agendado do `haadar.notification_outbox` no Neon, entregando alertas de vagas no Telegram e higienização de testes no CI. |
-| **13** | **URLs Públicas GeekHunter, Metadados Vivos & Filtro Estrito de Sênior** | Alto | 🟢 Concluído | Suporte ao padrão moderno `/pt/:company/jobs/:slug` da GeekHunter, extração HTTP viva de metadados (`fetchJobMetadata`) em links manuais e bloqueio de vagas sênior/5+ anos declaradas na descrição. |
-| **14** | **Experiência Minimalista & Silenciamento Total de Vagas Filtradas** | Normal | 🟢 Concluído | Layout enxuto e direto ao ponto no Telegram (título, empresa, match score, pontos fortes e estudo); silenciamento total de vagas descartadas no webhook para eliminar ruído. |
-
-
+| B1 | Painel web integrado para visualização do histórico de vagas no navegador | | Normal | Interface leve servida pelo próprio Worker |
+| B2 | Integração de novas fontes de vagas (Catho, InfoJobs) via APIs públicas | | Normal | Adapters com rate limit e testes unitários |

@@ -1,135 +1,118 @@
-# Matriz de Rastreabilidade — Núcleo do Domínio & Migração
+# Rastreabilidade: Critérios do Sistema aos Testes
 
-Mapeamento formal dos critérios de negócio e requisitos técnicos para seus respectivos testes automatizados.
-Padrão derivado do `casa-de-leiloes` e `ub-mode`.
+Cada critério de aceitação mapeia diretamente para os testes automatizados que comprovam sua conformidade no Argus.
 
-## Legenda de Status:
-- 🔴 **RED:** Teste escrito e falha esperada comprovada.
-- 🟢 **GREEN:** Código implementado e teste passando.
-- 🟡 **REFACTOR:** Código refatorado sob princípios de simplicidade e baixo CRAP score.
+## J0: Walking Skeleton & Banco Neon
 
----
+| Critério | Descrição | Testes | Situação |
+|---|---|---|---|
+| 0.1 | Conexão com Neon Postgres via `@neondatabase/serverless` e rota `/health/db` | `tests/integration/neon-connection.test.ts` | Coberto |
 
-## Núcleo 1: Domínio Puro & Triagem de Escopo
+## J1: Esquema de Dados, Deduplicação & TTL
 
-| ID | Requisito de Negócio / Engenharia | Comportamento Esperado | Teste Automatizado | Status |
-|---|---|---|---|---|
-| **CR-1.1** | Entidade Canônica de Vaga | Uma vaga não pode existir sem URL canônica, título e fingerprint invariante. | `tests/domain/vacancy.test.ts` | 🟢 GREEN |
-| **CR-1.2** | Deduplicação Multi-Fonte | Se a mesma vaga vier da Gupy e do LinkedIn com mesmo fingerprint, são unificadas. | `tests/domain/vacancy.test.ts` | 🟢 GREEN |
-| **CR-1.3** | Escopo: Pleno Acessível | Vagas Pleno com tarefas de mentoria/suporte são classificadas como `junior_to_mid` e aprovadas. | `tests/decision/scope-analyzer.test.ts` | 🟢 GREEN |
-| **CR-1.4** | Escopo: Barreira PCD | Vagas afirmativas ou exclusivas para PCD são rejeitadas determinísticamente. | `tests/decision/scope-analyzer.test.ts` | 🟢 GREEN |
-| **CR-1.5** | Escopo: Barreira Graduação | Vagas com superior completo como requisito eliminatório são rejeitadas. | `tests/decision/scope-analyzer.test.ts` | 🟢 GREEN |
-| **CR-1.6** | Escopo: Localização | Vagas presenciais fora da região Tatuí/Sorocaba são rejeitadas; remoto é 100% livre. | `tests/decision/scope-analyzer.test.ts` | 🟢 GREEN |
+| Critério | Descrição | Testes | Situação |
+|---|---|---|---|
+| 1.1 | Tabelas `vacancies`, `vacancy_occurrences` e `candidate_rejections` no Postgres | `tests/integration/neon-connection.test.ts` | Coberto |
+| 1.2 | Deduplicação idempotente por hash MD5/SHA256 impedindo vagas repetidas | `tests/domain/vacancy.test.ts` | Coberto |
+| 1.3 | Expiração por TTL e purga automática de vagas obsoletas | `tests/notifications/outbox.test.ts` | Coberto |
 
----
+## J2: Perfil do Candidato & Analisador de Escopo
 
-## Núcleo 3: Pipeline de Ingestão Integrada (Adapters -> Scope Analyzer -> Neon)
+| Critério | Descrição | Testes | Situação |
+|---|---|---|---|
+| 2.1 | Perfil técnico tipado com senioridade (Júnior/Pleno) e stack core | `tests/domain/config.test.ts` | Coberto |
+| 2.2 | Bloqueio de vagas exclusivas para PCD e exigência mandatória de diploma | `tests/decision/scope-analyzer.test.ts` | Coberto |
+| 2.3 | Validação de modalidade remota e limites geográficos para presencial | `tests/decision/scope-analyzer.test.ts` | Coberto |
 
-| ID | Requisito de Negócio / Engenharia | Comportamento Esperado | Teste Automatizado | Status |
-|---|---|---|---|---|
-| **CR-3.1** | Triagem na Ingestão do Adaptador | Quando o adapter descobre uma vaga, ela é avaliada pelo `evaluateVacancyScope`. Se elegível, salva em `haadar.vacancies`. | `tests/integration/ingest-pipeline.test.ts` | 🟢 GREEN |
-| **CR-3.2** | Auditoria de Descarte sem Duplicação | Se a vaga for rejeitada pelo Scope Analyzer (ex: Sênior ou PCD), grava em `haadar.candidate_rejections` com incremento. | `tests/integration/ingest-pipeline.test.ts` | 🟢 GREEN |
-| **CR-3.3** | Enfileiramento de Alertas Elegíveis | Vagas aprovadas com score >= 60 geram registro pendente na fila `haadar.notification_outbox`. | `tests/integration/ingest-pipeline.test.ts` | 🟢 GREEN |
+## J3: Pipeline de Ingestão & Auditoria de Rejeições
 
----
+| Critério | Descrição | Testes | Situação |
+|---|---|---|---|
+| 3.1 | Ingestão unificada através dos adaptadores de vagas (Gupy, Greenhouse, etc.) | `tests/integration/ingest-pipeline.test.ts` | Coberto |
+| 3.2 | Registro auditável de rejeições com motivo exato em `candidate_rejections` | `tests/integration/ingest-pipeline.test.ts` | Coberto |
+| 3.3 | Upsert atômico de ocorrências para cálculo de frequência de mercado | `tests/integration/ingest-pipeline.test.ts` | Coberto |
 
-## Núcleo 4: Juiz Semântico de IA (Cloudflare Worker -> Gemini / OpenRouter)
+## J4: Juiz Semântico de IA (LLM Judge)
 
-| ID | Requisito de Negócio / Engenharia | Comportamento Esperado | Teste Automatizado | Status |
-|---|---|---|---|---|
-| **CR-4.1** | Prompt Semântico & Formato Estrito | O prompt do juiz consome o perfil e a vaga, retornando JSON estrito com contrato compatível (`is_real_job_opportunity`, `cv_compatibility_score`, `category`, etc.). | `tests/ai/llm-judge.test.ts` | 🟢 GREEN |
-| **CR-4.2** | Fallback Heurístico Resiliente | Quando chaves de API não estiverem configuradas ou o provedor falhar/estiver esgotado, faz fallback gracioso para o score do ScopeAnalyzer sem derrubar o pipeline. | `tests/ai/llm-judge.test.ts` | 🟢 GREEN |
-| **CR-4.3** | Multi-Provider Chain (Gemini -> OpenRouter) | Se Gemini falhar com 429/500, a cadeia tenta o OpenRouter antes de desistir. | `tests/ai/llm-judge.test.ts` | 🟢 GREEN |
+| Critério | Descrição | Testes | Situação |
+|---|---|---|---|
+| 4.1 | Avaliação semântica via Gemini 3.5 com score de compatibilidade e lacunas | `tests/ai/llm-judge.test.ts` | Coberto |
+| 4.2 | Fallback transparente para OpenRouter em oscilações de cota (429) | `tests/ai/llm-judge.test.ts` | Coberto |
+| 4.3 | Fallback gracioso para heurística local sem quebrar o pipeline | `tests/integration/ingest-pipeline-ai.test.ts` | Coberto |
 
----
+## J5: Webhook do Telegram & Inbox Manual
 
-## Núcleo 5: Telegram Rico & Webhook Inbox Manual
+| Critério | Descrição | Testes | Situação |
+|---|---|---|---|
+| 5.1 | Rota `/telegram/webhook` com validação de token secreto do bot | `tests/notifications/telegram-friendly.test.ts` | Coberto |
+| 5.2 | Extração de URLs enviadas pelo celular em conversas privadas | `tests/notifications/telegram-friendly.test.ts` | Coberto |
+| 5.3 | Enfileiramento automático de alertas aprovados no outbox | `tests/integration/ingest-pipeline.test.ts` | Coberto |
 
-| ID | Requisito de Negócio / Engenharia | Comportamento Esperado | Teste Automatizado | Status |
-|---|---|---|---|---|
-| **CR-5.1** | Card Rico HTML com Evidências de Stack | O card do Telegram formata em HTML limpo: título em negrito, empresa, modalidade, tempo de publicação, stack aderente e lacunas a desenvolver. | `tests/notifications/telegram-rich.test.ts` | 🟢 GREEN |
-| **CR-5.2** | Webhook de Ingestão Manual com Autenticação | Endpoint `/telegram/webhook` recebe URLs enviadas via chat do Telegram, valida secret token e extrai link de vaga válido. | `tests/notifications/telegram-rich.test.ts` | 🟢 GREEN |
-| **CR-5.3** | Deduplicação e Análise Imediata no Webhook | Ao receber link manual via webhook, processa via `IngestPipeline`, grava no Neon e responde imediatamente no chat. | `tests/notifications/telegram-rich.test.ts` | 🟢 GREEN |
+## J6: Migração para a Nuvem & Aposentadoria Local
 
----
+| Critério | Descrição | Testes | Situação |
+|---|---|---|---|
+| 6.1 | Desativação dos serviços systemd locais e transição 100% para Cloudflare + Neon | `tests/smoke.test.ts` | Coberto |
 
-## Núcleo 7: Maximização & Inteligência de Operação (Evidência, Fontes & Relatórios Diários)
+## J7: Inteligência de Mercado & Relatório Diário
 
-| ID | Requisito de Negócio / Engenharia | Comportamento Esperado | Teste Automatizado | Status |
-|---|---|---|---|---|
-| **CR-7.1** | Densidade de Evidência da Vaga | Classifica o nível de detalhe do anúncio (`LOW_EVIDENCE`, `MEDIUM_EVIDENCE`, `HIGH_EVIDENCE`) para não gastar tokens em vagas rasas/fantasmas. | `tests/decision/evidence.test.ts` | 🟢 GREEN |
-| **CR-7.2** | Expansão de Fontes GitHub | Adiciona repositórios orgânicos de vagas à lista de adaptadores do portfólio (`backend-br`, `soujava`, `react-brasil`, `nodejsdevbr`). | `tests/portfolio/sources.test.ts` | 🟢 GREEN |
-| **CR-7.3** | Relatório Diário de Funil no Telegram | Agrega do Neon o total de vagas vistas, aprovadas e o ranking dos principais motivos de descarte em formato de resumo diário. | `tests/notifications/daily-report.test.ts` | 🟢 GREEN |
+| Critério | Descrição | Testes | Situação |
+|---|---|---|---|
+| 7.1 | Consolidação automática das 24 horas às 20h BRT com totalizadores de funil | `tests/notifications/daily-report.test.ts` | Coberto |
+| 7.2 | Identificação das 3 lacunas técnicas mais frequentes do dia para estudo | `tests/notifications/daily-report.test.ts` | Coberto |
+| 7.3 | Agendamento resiliente no cron do Cloudflare sem chamadas concorrentes | `tests/notifications/daily-report.test.ts` | Coberto |
 
----
+## J8: Comandos Interativos no Telegram
 
-## Núcleo 8: Comandos Interativos do Telegram Bot
+| Critério | Descrição | Testes | Situação |
+|---|---|---|---|
+| 8.1 | Comandos `/start` e `/ajuda` com instruções de uso e atalhos | `tests/notifications/telegram-friendly.test.ts` | Coberto |
+| 8.2 | Comandos operacionais `/status`, `/fontes` e `/problemas` com saúde do sistema | `tests/notifications/telegram-friendly.test.ts` | Coberto |
+| 8.3 | Consultas dinâmicas `/relatorio` e `/ultimas` lendo diretamente do Neon | `tests/notifications/telegram-friendly.test.ts` | Coberto |
 
-| ID | Requisito de Negócio / Engenharia | Comportamento Esperado | Teste Automatizado | Status |
-|---|---|---|---|---|
-| **CR-8.1** | Normalização & Parser de Comandos | Reconhece comandos com/sem barra, minúsculas/maiúsculas, remove `@botname` e ignora mensagens que contenham URLs. | `tests/notifications/telegram-commands.test.ts` | 🟢 GREEN |
-| **CR-8.2** | Resumo Operacional (`/status`) | Consulta conectividade com o banco Neon Postgres, total de vagas em radar e hora da última coleta. | `tests/notifications/telegram-commands.test.ts` | 🟢 GREEN |
-| **CR-8.3** | Histórico Recente (`/ultimas`) | Traz as últimas 5 decisões de descarte/aprovação com timestamp formatado no horário de Brasília e motivo explícito. | `tests/notifications/telegram-commands.test.ts` | 🟢 GREEN |
-| **CR-8.4** | Diagnóstico de Gargalos (`/problemas` & `/fontes`) | Agrupa os maiores motivos de descarte e volume de vagas por fonte nas últimas 24 horas. | `tests/notifications/telegram-commands.test.ts` | 🟢 GREEN |
-| **CR-8.5** | Integração no Webhook | Rota `/telegram/webhook` detecta se a mensagem é comando ou URL, despacha e responde diretamente no chat. | `tests/notifications/telegram-rich.test.ts` | 🟢 GREEN |
+## J9: Resolução Canônica de URLs & GeekHunter
 
----
+| Critério | Descrição | Testes | Situação |
+|---|---|---|---|
+| 9.1 | Decodificação de parâmetros Gupy Base64 para URLs canônicas | `tests/adapters/url-resolver.test.ts` | Coberto |
+| 9.2 | Limpeza de parâmetros de rastreamento (`utm_*`, `trk`, `trackingId`) | `tests/adapters/url-resolver.test.ts` | Coberto |
+| 9.3 | Resolução segura de redirecionamentos `lnkd.in` com proteção anti-SSRF | `tests/adapters/url-resolver.test.ts` | Coberto |
+| 9.4 | Adaptador GeekHunter coletando oportunidades públicas | `tests/adapters/geekhunter.test.ts` | Coberto |
 
-## Núcleo 9: Normalizador Canônico de URLs & Adaptador GeekHunter
+## J10: Integração Operacional do Juiz de IA
 
-| ID | Requisito de Negócio / Engenharia | Comportamento Esperado | Teste Automatizado | Status |
-|---|---|---|---|---|
-| **CR-9.1** | Decodificação Gupy Base64 | Links `/job/<base64>` contendo payload JSON com `jobId` numérico são canonicizados para `/jobs/<id>` evitando duplicidade. | `tests/adapters/url-resolver.test.ts` | 🟢 GREEN |
-| **CR-9.2** | Limpeza de Parâmetros de Tracking | Remove UTMs e tracking keys (`trk`, `trackingId`, `refId`) preservando a unicidade da URL canônica. | `tests/adapters/url-resolver.test.ts` | 🟢 GREEN |
-| **CR-9.3** | Resolução Segura de Encurtador LinkedIn | Resolve links curtos `lnkd.in` seguindo redirecionamento HTTP com proteção SSRF (apenas destinos de ATS confiáveis). | `tests/adapters/url-resolver.test.ts` | 🟢 GREEN |
-| **CR-9.4** | Coletor GeekHunter | Consulta a listagem pública de vagas tech do GeekHunter, extrai oportunidades e mapeia para o contrato `AdapterResult`. | `tests/adapters/geekhunter.test.ts` | 🟢 GREEN |
+| Critério | Descrição | Testes | Situação |
+|---|---|---|---|
+| 10.1 | Avaliação em tempo real de links manuais enviados no Telegram | `tests/integration/ingest-pipeline-ai.test.ts` | Coberto |
+| 10.2 | Rejeição automática de vagas sem aderência técnica mínima | `tests/integration/ingest-pipeline-ai.test.ts` | Coberto |
+| 10.3 | Resiliência e persistência de lacunas no banco de dados | `tests/integration/ingest-pipeline-ai.test.ts` | Coberto |
 
----
+## J11: Formatação Humanizada & Anti-Duplicidade
 
-## Núcleo 10: Integração Operacional da IA (LLM Judge no Pipeline & Telegram)
+| Critério | Descrição | Testes | Situação |
+|---|---|---|---|
+| 11.1 | Remoção total de jargões de máquina das mensagens do bot | `tests/notifications/telegram-friendly.test.ts` | Coberto |
+| 11.2 | Detecção de vagas já cadastradas sem re-alertar o usuário | `tests/notifications/telegram-friendly.test.ts` | Coberto |
+| 11.3 | Extração de título e empresa a partir do texto livre da mensagem | `tests/notifications/telegram-friendly.test.ts` | Coberto |
 
-| ID | Requisito de Negócio / Engenharia | Comportamento Esperado | Teste Automatizado | Status |
-|---|---|---|---|---|
-| **CR-10.1** | Avaliação Semântica no Pipeline | O `IngestPipeline` executa `LlmJudge.evaluate` para vagas elegíveis pelo escopo heurístico, anexando a análise da IA. | `tests/integration/ingest-pipeline-ai.test.ts` | 🟢 GREEN |
-| **CR-10.2** | Enriquecimento do Telegram | O webhook do Telegram e o payload de notificação incluem categoria, recomendação, raciocínio e lacunas técnicas identificadas pela IA. | `tests/integration/ingest-pipeline-ai.test.ts` | 🟢 GREEN |
-| **CR-10.3** | Fallback Gracioso sem Chave de IA | Quando nenhuma chave de IA estiver configurada ou a API falhar, o pipeline reverte com segurança para o motor heurístico sem quebrar. | `tests/integration/ingest-pipeline-ai.test.ts` | 🟢 GREEN |
+## J12: Despachador de Outbox & Higienização de CI
 
----
+| Critério | Descrição | Testes | Situação |
+|---|---|---|---|
+| 12.1 | Consumo periódico do `haadar.notification_outbox` no Neon via cron | `tests/integration/neon-outbox-dispatcher.test.ts` | Coberto |
+| 12.2 | Testes de integração limpam seus próprios registros de teste do Neon | `tests/integration/ingest-pipeline.test.ts` | Coberto |
 
-## Núcleo 11: Experiência Conversacional Amigável & Anti-Duplicidade no Telegram
+## J13: URLs Modernas GeekHunter, Metadados Vivos & Filtro Sênior
 
-| ID | Requisito de Negócio / Engenharia | Comportamento Esperado | Teste Automatizado | Status |
-|---|---|---|---|---|
-| **CR-11.1** | Formatação Amigável & Sem Jargões | Substitui saídas técnicas (`heuristic_fallback`, `APPLY_NOW`, etc.) por textos naturais, encorajadores e claros em português. | `tests/notifications/telegram-friendly.test.ts` | 🟢 GREEN |
-| **CR-11.2** | Detecção de Vagas Já Cadastradas | Quando uma vaga já existir no Neon (`inserted: false`), avisa amigavelmente sem disparar alertas repetidos. | `tests/notifications/telegram-friendly.test.ts` | 🟢 GREEN |
-| **CR-11.3** | Extração Inteligente de Título & Empresa | Extrai título e empresa a partir do corpo da mensagem de texto recebida junto com o link. | `tests/notifications/telegram-friendly.test.ts` | 🟢 GREEN |
+| Critério | Descrição | Testes | Situação |
+|---|---|---|---|
+| 13.1 | URLs canônicas públicas da GeekHunter (`/pt/:company/jobs/:slug`) | `tests/adapters/geekhunter.test.ts` | Coberto |
+| 13.2 | Extração ao vivo de metadados (`<title>`, empresa, `<meta description>`) | `tests/adapters/url-resolver.test.ts` | Coberto |
+| 13.3 | Bloqueio estrito de nível Sênior no corpo da vaga e 5+ anos de experiência | `tests/decision/senior-filter.test.ts` | Coberto |
 
----
+## J14: Layout Minimalista & Silenciamento de Descartes
 
-## Núcleo 12: Despachador Automático do Outbox Neon & Higienização de CI
-
-| ID | Requisito de Negócio / Engenharia | Comportamento Esperado | Teste Automatizado | Status |
-|---|---|---|---|---|
-| **CR-12.1** | Despacho Periódico do Outbox Neon | Busca linhas com status `pending` em `haadar.notification_outbox`, envia alertas ao Telegram e marca como `sent` com `delivered_at`. | `tests/integration/neon-outbox-dispatcher.test.ts` | 🟢 GREEN |
-| **CR-12.2** | Higienização da Base no CI | Testes de integração de pipeline limpam as próprias linhas criadas no outbox após asserção para não poluir o banco de produção. | `tests/integration/ingest-pipeline.test.ts` | 🟢 GREEN |
-
----
-
-## Núcleo 13: URLs Públicas, Extração Viva de Metadados e Bloqueio de Senioridade
-
-| ID | Requisito de Negócio / Engenharia | Comportamento Esperado | Teste Automatizado | Status |
-|---|---|---|---|---|
-| **CR-13.1** | Extração de URLs Canônicas GeekHunter | Coleta links de vagas no padrão moderno `/pt/:company/jobs/:slug` que abrem páginas públicas reais sem redirecionar para tela de login/painel geral. | `tests/adapters/geekhunter.test.ts` | 🟢 GREEN |
-| **CR-13.2** | Extração Viva de Metadados em Links Manuais | Requisição segura com timeout via `fetchJobMetadata` para ler `<title>`, empresa e OpenGraph description quando o usuário envia apenas a URL no Telegram. | `tests/adapters/url-resolver.test.ts` | 🟢 GREEN |
-| **CR-13.3** | Bloqueio de Nível Sênior no Corpo da Vaga | O `ScopeAnalyzer` e o `IngestPipeline` rejeitam automaticamente vagas cujo título ou descrição exijam nível Sênior/Lead ou 5+ anos de experiência. | `tests/decision/senior-filter.test.ts` | 🟢 GREEN |
-
----
-
-## Núcleo 14: Layout Minimalista e Silenciamento de Oportunidades Descartadas
-
-| ID | Requisito de Negócio / Engenharia | Comportamento Esperado | Teste Automatizado | Status |
-|---|---|---|---|---|
-| **CR-14.1** | Mensagens Minimalistas & Direto ao Ponto | Exibe título, empresa, match score e destaques objetivos (*pontos fortes* e *estudo*), sem jargões de máquina ou blocos textuais extensos. | `tests/notifications/telegram-friendly.test.ts` | 🟢 GREEN |
-| **CR-14.2** | Silenciamento de Vagas Filtradas no Telegram | Vagas que não atingem os critérios do perfil são auditadas e registradas no Neon, mas não geram alertas no Telegram, mantendo o canal 100% focado e livre de ruídos. | `src/index.ts` & `tests/notifications/telegram-friendly.test.ts` | 🟢 GREEN |
-
-
+| Critério | Descrição | Testes | Situação |
+|---|---|---|---|
+| 14.1 | Mensagens no Telegram com formato direto ao ponto (match, pontos fortes, estudo) | `tests/notifications/telegram-friendly.test.ts` | Coberto |
+| 14.2 | Silenciamento total de vagas descartadas no Telegram (zero ruído) | `tests/notifications/telegram-friendly.test.ts` | Coberto |
