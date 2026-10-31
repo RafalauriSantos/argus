@@ -84,4 +84,14 @@ Padrão derivado do `casa-de-leiloes` e `ub-mode`.
 | **CR-9.3** | Resolução Segura de Encurtador LinkedIn | Resolve links curtos `lnkd.in` seguindo redirecionamento HTTP com proteção SSRF (apenas destinos de ATS confiáveis). | `tests/adapters/url-resolver.test.ts` | 🟢 GREEN |
 | **CR-9.4** | Coletor GeekHunter | Consulta a listagem pública de vagas tech do GeekHunter, extrai oportunidades e mapeia para o contrato `AdapterResult`. | `tests/adapters/geekhunter.test.ts` | 🟢 GREEN |
 
+---
+
+## Núcleo 10: Integração Operacional da IA (LLM Judge no Pipeline & Telegram)
+
+| ID | Requisito de Negócio / Engenharia | Comportamento Esperado | Teste Automatizado | Status |
+|---|---|---|---|---|
+| **CR-10.1** | Avaliação Semântica no Pipeline | O `IngestPipeline` executa `LlmJudge.evaluate` para vagas elegíveis pelo escopo heurístico, anexando a análise da IA. | `tests/integration/ingest-pipeline-ai.test.ts` | 🟢 GREEN |
+| **CR-10.2** | Enriquecimento do Telegram | O webhook do Telegram e o payload de notificação incluem categoria, recomendação, raciocínio e lacunas técnicas identificadas pela IA. | `tests/integration/ingest-pipeline-ai.test.ts` | 🟢 GREEN |
+| **CR-10.3** | Fallback Gracioso sem Chave de IA | Quando nenhuma chave de IA estiver configurada ou a API falhar, o pipeline reverte com segurança para o motor heurístico sem quebrar. | `tests/integration/ingest-pipeline-ai.test.ts` | 🟢 GREEN |
+
 
