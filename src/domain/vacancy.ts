@@ -27,7 +27,7 @@ function cleanText(value: string): string {
 }
 
 /**
- * Gera um fingerprint SHA-256 determinístico da vaga.
+ * Gera um fingerprint normalizado estável da vaga.
  * Duas vagas com mesmo título e empresa geram o exato mesmo hash,
  * impedindo duplicações de feed e cruzando origens diferentes.
  */
