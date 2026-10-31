@@ -217,7 +217,7 @@ const worker = {
           if (env.DATABASE_URL) {
             const { PostgresStore } = await import("./storage/postgres-store");
             const { IngestPipeline } = await import("./discovery/ingest-pipeline");
-            const { resolveShortUrl } = await import("./discovery/url-resolver");
+            const { resolveShortUrl, fetchJobMetadata } = await import("./discovery/url-resolver");
             const { LlmJudge } = await import("./ai/llm-judge");
             const { DEFAULT_USER_PROFILE } = await import("./domain/profile");
 
@@ -229,6 +229,9 @@ const worker = {
               }
               return Response.json({ status: "ignored", reason: "untrusted_or_invalid_url" });
             }
+
+            // Busca metadados reais da página da vaga (título, empresa e descrição)
+            const meta = await fetchJobMetadata(canonicalUrl, fetch);
 
             let judge: LlmJudge | undefined;
             if (env.GEMINI_API_KEY || env.OPENROUTER_API_KEY) {
@@ -242,6 +245,16 @@ const worker = {
             const { extractJobDetailsFromMessage, formatFriendlyTelegramJobReply } = await import("./notifications/telegram-friendly");
             const jobDetails = extractJobDetailsFromMessage(parsed.rawText, canonicalUrl);
 
+            const finalTitle = jobDetails.title !== "Vaga via Telegram"
+              ? jobDetails.title
+              : (meta.title || "Vaga via Telegram");
+
+            const finalOrg = jobDetails.organization !== "Empresa a confirmar"
+              ? jobDetails.organization
+              : (meta.organization || "Empresa a confirmar");
+
+            const finalDesc = [jobDetails.description, meta.description].filter(Boolean).join(" ");
+
             const store = new PostgresStore(env.DATABASE_URL);
             const pipeline = new IngestPipeline(store, DEFAULT_USER_PROFILE, judge);
 
@@ -249,11 +262,11 @@ const worker = {
               sourceId: "telegram-manual",
               sourceVacancyId: jobDetails.sourceVacancyId,
               canonicalUrl,
-              title: jobDetails.title,
-              organization: jobDetails.organization,
+              title: finalTitle,
+              organization: finalOrg,
               location: "Remoto",
               workModel: "unknown",
-              descriptionSummary: jobDetails.description,
+              descriptionSummary: finalDesc,
               queryId: "manual_inbox",
               observedAt: new Date().toISOString(),
             });
@@ -263,9 +276,9 @@ const worker = {
               const replyMsg = formatFriendlyTelegramJobReply({
                 status: result.status,
                 isNew: result.inserted ?? true,
-                title: jobDetails.title,
-                organization: jobDetails.organization,
-                score: result.score ?? 0,
+                title: finalTitle,
+                organization: finalOrg,
+                score: result.score ?? 70,
                 canonicalUrl,
                 rejectionReason: result.rejectionReason,
                 judgeResult: result.judgeResult,

@@ -80,11 +80,22 @@ export class IngestPipeline {
         heuristicScore: scope.score,
       });
 
-      // Se a IA constatar que não é vaga de dev real ou identificar barreiras impeditivas
-      if (!judgeResult.isRealJobOpportunity || judgeResult.hardBarriers.length > 0) {
-        const barrierReason = judgeResult.hardBarriers.length > 0
+      // Se a IA constatar que não é vaga de dev real, identificar barreiras, marcar sênior ou incompatível
+      const isSeniorByJudge =
+        judgeResult.declaredLevel === "senior" ||
+        judgeResult.operationalLevel === "senior";
+
+      if (
+        !judgeResult.isRealJobOpportunity ||
+        judgeResult.hardBarriers.length > 0 ||
+        judgeResult.category === "INCOMPATIVEL" ||
+        isSeniorByJudge
+      ) {
+        const barrierReason = isSeniorByJudge
+          ? "Vaga classificada como nível Sênior pela IA (perfil do usuário é Júnior/Pleno)"
+          : judgeResult.hardBarriers.length > 0
           ? judgeResult.hardBarriers.join("; ")
-          : judgeResult.reasoning || "não é vaga técnica de desenvolvedor";
+          : judgeResult.reasoning || "não compatível com o perfil";
         const aiRejectionReason = `Descartada pelo juiz de IA: ${barrierReason}`;
 
         await this.store.recordRejection({

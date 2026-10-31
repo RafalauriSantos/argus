@@ -99,9 +99,9 @@ export function evaluateVacancyScope(
     }
   }
 
-  // 4. Análise de Nível Declarado (Título)
+  // 4. Análise de Nível Declarado (Título e Descrição)
   let declaredLevel: "entry" | "junior" | "mid" | "senior" | "unknown" = "unknown";
-  if (/(?:senior|sênior|sr|lead|staff|principal|especialista|arquiteto|tech lead|gerente|coordenador)/i.test(normTitle)) {
+  if (/(?:senior|sênior|\bsr\.?|\blead\b|\bstaff\b|\bprincipal\b|\bespecialista\b|\barquiteto\b|\btech lead\b|\bgerente\b|\bcoordenador\b)/i.test(normTitle)) {
     declaredLevel = "senior";
   } else if (/(?:pleno|pl)/i.test(normTitle)) {
     declaredLevel = "mid";
@@ -109,18 +109,24 @@ export function evaluateVacancyScope(
     declaredLevel = "junior";
   }
 
-  // Sênior explícito no título é bloqueado
-  if (declaredLevel === "senior") {
+  // Sênior explícito no título ou na descrição é bloqueado
+  const isSeniorInDesc =
+    /(?:desenvolvedor|desenvolvedora|engenheiro|engenheira|programador|programadora|analista|backend|back-end|frontend|front-end|fullstack|full-stack)\s+(?:senior|sênior|\bsr\b)/i.test(normDesc) ||
+    /(?:nivel|nível|senioridade|perfil)\s*[:=-]?\s*(?:senior|sênior)/i.test(normDesc) ||
+    /(?:vaga|posicao|oportunidade)\s*(?:senior|sênior)/i.test(normDesc) ||
+    /(?:(?:5|6|7|8|9|10)\s*(?:\+|\s*a\s*\d+)?\s*anos?\s*de\s*experiencia)/i.test(fullText);
+
+  if (declaredLevel === "senior" || isSeniorInDesc) {
     return {
       eligible: false,
       reasonCode: "senior_blocked",
-      declaredLevel,
+      declaredLevel: "senior",
       operationalLevel: "senior",
       isRemote,
       score: 0,
       matchedStack: [],
-      cautions: ["Título declara nível Sênior/Lead"],
-      reason: "Descartada: Nível Sênior bloqueado pelo perfil",
+      cautions: ["Vaga declara nível Sênior/Lead (fora do escopo Júnior/Pleno)"],
+      reason: "Descartada: Vaga de nível Sênior, fora do seu perfil (Júnior/Pleno)",
     };
   }
 
