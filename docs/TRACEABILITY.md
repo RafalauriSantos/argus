@@ -104,4 +104,13 @@ Padrão derivado do `casa-de-leiloes` e `ub-mode`.
 | **CR-11.2** | Detecção de Vagas Já Cadastradas | Quando uma vaga já existir no Neon (`inserted: false`), avisa amigavelmente sem disparar alertas repetidos. | `tests/notifications/telegram-friendly.test.ts` | 🟢 GREEN |
 | **CR-11.3** | Extração Inteligente de Título & Empresa | Extrai título e empresa a partir do corpo da mensagem de texto recebida junto com o link. | `tests/notifications/telegram-friendly.test.ts` | 🟢 GREEN |
 
+---
+
+## Núcleo 12: Despachador Automático do Outbox Neon & Higienização de CI
+
+| ID | Requisito de Negócio / Engenharia | Comportamento Esperado | Teste Automatizado | Status |
+|---|---|---|---|---|
+| **CR-12.1** | Despacho Periódico do Outbox Neon | Busca linhas com status `pending` em `haadar.notification_outbox`, envia alertas ao Telegram e marca como `sent` com `delivered_at`. | `tests/integration/neon-outbox-dispatcher.test.ts` | 🟢 GREEN |
+| **CR-12.2** | Higienização da Base no CI | Testes de integração de pipeline limpam as próprias linhas criadas no outbox após asserção para não poluir o banco de produção. | `tests/integration/ingest-pipeline.test.ts` | 🟢 GREEN |
+
 

@@ -122,6 +122,57 @@ export class PostgresStore {
   }
 
   /**
+   * Reivindica até limit notificações pendentes para envio
+   */
+  async fetchAndClaimPendingOutbox(limit = 3): Promise<Array<{
+    id: string;
+    idempotencyKey: string;
+    channel: string;
+    payloadJson: Record<string, unknown>;
+  }>> {
+    const rows = await this.sql`
+      UPDATE haadar.notification_outbox
+      SET attempts = attempts + 1
+      WHERE id IN (
+        SELECT id FROM haadar.notification_outbox
+        WHERE status = 'pending' AND attempts < 3
+        ORDER BY created_at ASC
+        LIMIT ${limit}
+      )
+      RETURNING id, idempotency_key, channel, payload_json;
+    `;
+
+    return rows.map(r => ({
+      id: String(r.id),
+      idempotencyKey: String(r.idempotency_key),
+      channel: String(r.channel),
+      payloadJson: r.payload_json as Record<string, unknown>,
+    }));
+  }
+
+  /**
+   * Marca notificação como enviada com sucesso
+   */
+  async markOutboxDelivered(id: string): Promise<void> {
+    await this.sql`
+      UPDATE haadar.notification_outbox
+      SET status = 'sent', delivered_at = NOW()
+      WHERE id = ${id};
+    `;
+  }
+
+  /**
+   * Marca notificação como falha terminal
+   */
+  async markOutboxFailed(id: string): Promise<void> {
+    await this.sql`
+      UPDATE haadar.notification_outbox
+      SET status = 'failed'
+      WHERE id = ${id};
+    `;
+  }
+
+  /**
    * Obtém métricas do funil das últimas 24h para o relatório diário
    */
   async getDailyFunnelStats(): Promise<{
