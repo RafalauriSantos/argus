@@ -122,6 +122,42 @@ export class PostgresStore {
   }
 
   /**
+   * Obtém métricas do funil das últimas 24h para o relatório diário
+   */
+  async getDailyFunnelStats(): Promise<{
+    vacanciesObserved: number;
+    rejectionsCount: number;
+    topRejectionReasons: Array<{ reason: string; count: number }>;
+  }> {
+    const [vacanciesRow] = await this.sql`
+      SELECT COUNT(*)::int AS total
+      FROM haadar.vacancies
+      WHERE last_observed_at >= NOW() - INTERVAL '24 hours';
+    `;
+
+    const [rejectionsRow] = await this.sql`
+      SELECT COALESCE(SUM(occurrences_count), 0)::int AS total
+      FROM haadar.candidate_rejections
+      WHERE last_rejected_at >= NOW() - INTERVAL '24 hours';
+    `;
+
+    const reasons = await this.sql`
+      SELECT reason, SUM(occurrences_count)::int AS count
+      FROM haadar.candidate_rejections
+      WHERE last_rejected_at >= NOW() - INTERVAL '24 hours'
+      GROUP BY reason
+      ORDER BY count DESC
+      LIMIT 5;
+    `;
+
+    return {
+      vacanciesObserved: vacanciesRow?.total || 0,
+      rejectionsCount: rejectionsRow?.total || 0,
+      topRejectionReasons: reasons.map(r => ({ reason: String(r.reason), count: Number(r.count) })),
+    };
+  }
+
+  /**
    * Limpeza automática com TTL (Time-To-Live).
    * Apaga descartes com mais de X dias para manter o banco leve para sempre.
    */
