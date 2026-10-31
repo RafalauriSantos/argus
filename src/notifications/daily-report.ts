@@ -10,7 +10,7 @@ export function formatDailyReportMessage(input: DailyReportInput): string {
   const totalProcessed = input.vacanciesObserved + input.rejectionsCount;
 
   const lines = [
-    `📊 <b>Resumo Diário do Radar Haadar · ${dateHeader}</b>`,
+    `📊 <b>Resumo Diário do Radar Argus · ${dateHeader}</b>`,
     "",
     `🔍 <b>Total de Oportunidades Analisadas:</b> ${totalProcessed}`,
     `✅ <b>Vagas Aprovadas / No Radar:</b> ${input.vacanciesObserved}`,

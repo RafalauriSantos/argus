@@ -46,7 +46,7 @@ describe("GitHub Issues adapter", () => {
 
     expect(requestedUrl).toBe("https://api.github.com/repos/backend-br/vagas/issues?state=open&sort=created&direction=desc&per_page=50");
     expect(apiVersion).toBe("2022-11-28");
-    expect(userAgent).toBe("Haadar vacancy discovery");
+    expect(userAgent).toBe("Argus vacancy discovery");
     expect(result.diagnostics).toEqual([]);
     expect(result.observations.map((item) => item.queryId)).toEqual(["role", "stack"]);
     expect(result.observations[0]).toMatchObject({

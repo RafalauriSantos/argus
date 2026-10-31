@@ -34,7 +34,7 @@ async function requestJobs(source: GupySourceDefinition, fetcher: typeof fetch):
       timeoutMs: source.limits.timeoutMs,
       maxBytes: source.limits.maxResponseBytes,
       method: "POST",
-      headers: { accept: "application/json, text/event-stream", "content-type": "application/json", "user-agent": "Haadar vacancy discovery" },
+      headers: { accept: "application/json, text/event-stream", "content-type": "application/json", "user-agent": "Argus vacancy discovery" },
       expectedContentTypes: ["application/json", "text/event-stream"],
       body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/call", params: { name: "search_jobs", arguments: { term: source.term, limit: source.limits.maxRecords } } }),
       fetcher,

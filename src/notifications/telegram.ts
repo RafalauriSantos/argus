@@ -25,7 +25,7 @@ export function formatTelegramAlert(card: TelegramAlertCard): string {
   const heading = card.stage === "provisional" ? "🔔 Nova vaga — sinal inicial" : "🔔 Nova vaga encontrada";
   const text = [heading, `💼 ${bounded(card.title, 500)}`, `🏢 Empresa: ${bounded(card.organization, 250)}`,
     `📍 Local: ${bounded(card.location, 250)}`, `🔎 Fonte: ${sourceLabel(card.source)}`, `🔗 ${card.url.slice(0, 1_500)}`,
-    "🤖 Enviado por Haadar"].join("\n");
+    "🤖 Enviado por Argus"].join("\n");
   return text.slice(0, 4_096);
 }
 

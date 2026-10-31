@@ -14,7 +14,7 @@ describe("CR-7.3: Relatório Diário de Funil no Telegram", () => {
       dateStr: "31/10/2026",
     });
 
-    expect(reportText).toContain("Resumo Diário do Radar Haadar · 31/10/2026");
+    expect(reportText).toContain("Resumo Diário do Radar Argus · 31/10/2026");
     expect(reportText).toContain("Total de Oportunidades Analisadas:</b> 47");
     expect(reportText).toContain("Vagas Aprovadas / No Radar:</b> 5");
     expect(reportText).toContain("Vagas Descartadas:</b> 42");

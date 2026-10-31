@@ -41,7 +41,7 @@ export function formatRichJobCard(card: RichJobCardInput): string {
   const company = escapeHtml((card.organization || "Empresa").trim());
   const workplace = card.workModel === "remote" ? "Remoto" : card.workModel === "hybrid" ? "Híbrido" : "Presencial";
   const loc = card.location && !card.location.toLowerCase().includes("remoto") ? ` · ${escapeHtml(card.location)}` : "";
-  const source = escapeHtml(card.source || "Radar Haadar");
+  const source = escapeHtml(card.source || "Radar Argus");
   const age = formatPublicationAge(card.publishedAt);
   const metadataLine = age ? `${source} · ${age}` : source;
 
