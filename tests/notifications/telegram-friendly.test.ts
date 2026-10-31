@@ -32,14 +32,14 @@ Descrição: Atuação com Node.js, TypeScript e PostgreSQL.`;
       canonicalUrl: "https://www.geekhunter.com.br/vagas/999123",
     });
 
-    expect(reply).toContain("Essa oportunidade já está registrada no seu radar");
+    expect(reply).toContain("Já cadastrada no seu radar");
     expect(reply).toContain("Desenvolvedor Backend Node.js Junior");
     expect(reply).toContain("Nubank");
-    expect(reply).toContain("90%");
+    expect(reply).toContain("90% match");
     expect(reply).not.toContain("heuristic_fallback");
   });
 
-  it("CR-11.1: formata parecer enriquecido por IA com tom humano, sem termos técnicos frios", () => {
+  it("CR-11.1: formata parecer enriquecido por IA com tom minimalista direto ao ponto", () => {
     const reply = formatFriendlyTelegramJobReply({
       status: "ACCEPTED",
       isNew: true,
@@ -65,15 +65,16 @@ Descrição: Atuação com Node.js, TypeScript e PostgreSQL.`;
       },
     });
 
-    expect(reply).toContain("Excelente oportunidade encontrada");
-    expect(reply).toContain("Análise do Argus (IA):");
-    expect(reply).toContain("Seus pontos fortes:");
-    expect(reply).toContain("Dica de estudo:");
+    expect(reply).toContain("Desenvolvedor Backend Node.js Junior");
+    expect(reply).toContain("Match:</b> 90%");
+    expect(reply).toContain("Pontos fortes:</b> Node.js, TypeScript, PostgreSQL");
+    expect(reply).toContain("Estudar:</b> Kafka");
+    expect(reply).toContain("Ver vaga no site");
     expect(reply).not.toContain("APPLY_NOW");
     expect(reply).not.toContain("heuristic_fallback");
   });
 
-  it("CR-11.1: formata fallback gracioso sem jargão técnico quando o provedor de IA oscilar", () => {
+  it("CR-11.1: formata fallback gracioso e minimalista sem jargão técnico", () => {
     const reply = formatFriendlyTelegramJobReply({
       status: "ACCEPTED",
       isNew: true,
@@ -99,7 +100,9 @@ Descrição: Atuação com Node.js, TypeScript e PostgreSQL.`;
       },
     });
 
-    expect(reply).toContain("Boa oportunidade para o seu perfil");
+    expect(reply).toContain("Desenvolvedor Backend Java Junior");
+    expect(reply).toContain("Tech Corp");
+    expect(reply).toContain("Match:</b> 80%");
     expect(reply).not.toContain("heuristic_fallback");
     expect(reply).not.toContain("APPLY_NOW");
     expect(reply).not.toContain("falha temporária");
