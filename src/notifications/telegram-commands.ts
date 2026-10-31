@@ -78,8 +78,8 @@ function friendlySource(src: string): string {
 
 export function buildStartHelp(): string {
   return (
-    "👋 <b>Olá! Eu sou o WorkHunter na nuvem.</b>\n\n" +
-    "Monitoro vagas ativamente 24/7 e analiso links manuais com IA.\n\n" +
+    "🏛️ <b>Olá! Eu sou o Argus.</b>\n\n" +
+    "O sentinela do seu radar profissional operando 24/7 na nuvem com IA.\n\n" +
     "🤖 <b>Comandos disponíveis:</b>\n" +
     "• /relatorio — Resumo consolidado do dia\n" +
     "• /status — Situação operacional do monitor\n" +
@@ -99,14 +99,14 @@ export function buildStatus(stats: {
 }): string {
   if (!stats.dbConnected) {
     return (
-      "⚠️ <b>WorkHunter · atenção</b>\n\n" +
+      "⚠️ <b>Argus · atenção</b>\n\n" +
       "Banco: Indisponível\n" +
       "Não foi possível consultar as tabelas no Neon Postgres no momento."
     );
   }
 
   return (
-    "✅ <b>WorkHunter · tudo certo</b>\n\n" +
+    "✅ <b>Argus · tudo certo</b>\n\n" +
     "• Infra: Cloudflare Workers (Edge)\n" +
     "• Banco: Neon PostgreSQL (Operacional)\n" +
     `• Vagas em radar: ${stats.totalVacancies} catalogadas\n` +

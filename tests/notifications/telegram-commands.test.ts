@@ -43,7 +43,7 @@ describe("Slice 8 — Telegram Interactive Commands", () => {
   describe("buildStartHelp", () => {
     it("gera mensagem com saudação e lista de comandos válidos em HTML do Telegram", () => {
       const msg = buildStartHelp();
-      expect(msg).toContain("WorkHunter");
+      expect(msg).toContain("Argus");
       expect(msg).toContain("/relatorio");
       expect(msg).toContain("/status");
       expect(msg).toContain("/ultimas");
@@ -62,7 +62,7 @@ describe("Slice 8 — Telegram Interactive Commands", () => {
         lastObservedAt: "2026-10-31T01:00:00.000Z",
       });
 
-      expect(msg).toContain("✅ <b>WorkHunter · tudo certo</b>");
+      expect(msg).toContain("✅ <b>Argus · tudo certo</b>");
       expect(msg).toContain("Banco: Neon PostgreSQL (Operacional)");
       expect(msg).toContain("42");
     });
@@ -75,7 +75,7 @@ describe("Slice 8 — Telegram Interactive Commands", () => {
         lastObservedAt: null,
       });
 
-      expect(msg).toContain("⚠️ <b>WorkHunter · atenção</b>");
+      expect(msg).toContain("⚠️ <b>Argus · atenção</b>");
       expect(msg).toContain("Banco: Indisponível");
     });
   });
@@ -153,7 +153,7 @@ describe("Slice 8 — Telegram Interactive Commands", () => {
   describe("handleTelegramCommand", () => {
     it("retorna mensagem de ajuda ao receber /start ou /ajuda", async () => {
       const res = await handleTelegramCommand("/start", {} as any);
-      expect(res).toContain("WorkHunter");
+      expect(res).toContain("Argus");
       expect(res).toContain("/ajuda");
     });
 
