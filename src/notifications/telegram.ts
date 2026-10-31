@@ -38,7 +38,7 @@ export function createTelegramClient(token: string, destination: string, fetcher
         const response = await fetcher(`https://api.telegram.org/bot${token}/sendMessage`, {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ chat_id: destination, text, disable_web_page_preview: true }),
+          body: JSON.stringify({ chat_id: destination, text, parse_mode: "HTML", disable_web_page_preview: true }),
           signal: controller.signal,
         });
         const payload = await response.json().catch(() => null) as { ok?: boolean; result?: { message_id?: number }; parameters?: { retry_after?: number } } | null;

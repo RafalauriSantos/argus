@@ -1,0 +1,48 @@
+name: Auto Merge On CI Success
+
+on:
+  workflow_run:
+    workflows: ["CI Quality Gate"]
+    types:
+      - completed
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  auto-merge:
+    name: Auto Merge Protected PR
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Auto-merge PR if branch is green
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const prs = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              head: `${context.repo.owner}:${context.payload.workflow_run.head_branch}`
+            });
+
+            if (prs.data.length === 0) {
+              console.log(`Nenhum PR aberto encontrado para a branch ${context.payload.workflow_run.head_branch}.`);
+              return;
+            }
+
+            for (const pr of prs.data) {
+              console.log(`CI 100% verde! Executando merge automático no PR #${pr.number} (${pr.title})...`);
+              await github.rest.pulls.merge({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: pr.number,
+                merge_method: 'squash'
+              });
+              console.log(`PR #${pr.number} mergeado com sucesso!`);
+            }

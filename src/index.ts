@@ -28,6 +28,7 @@ export { EnrichmentWorkflow } from "./workflows/enrichment";
 
 export interface Env {
   DB?: D1Database;
+  DATABASE_URL?: string;
   HAADAR_DISCOVERY?: Queue<DiscoveryTaskMessage>;
   ENRICHMENT_WORKFLOW?: Workflow<EnrichmentWorkflowParams>;
   OPERATIONS_TOKEN?: string;
@@ -107,6 +108,14 @@ const worker = {
     if (pathname === "/health") {
       return Response.json({ service: "haadar", status: "ok" });
     }
+    if (pathname === "/health/db") {
+      if (!env.DATABASE_URL) {
+        return Response.json({ service: "haadar", database: "unconfigured", error: "DATABASE_URL is not set" }, { status: 503 });
+      }
+      const { checkDatabaseHealth } = await import("./storage/neon");
+      const health = await checkDatabaseHealth(env.DATABASE_URL);
+      return Response.json({ service: "haadar", database: health }, { status: health.connected ? 200 : 503 });
+    }
     if (pathname === "/health/operations") {
       if (!env.DB || !env.OPERATIONS_TOKEN || request.headers.get("authorization") !== `Bearer ${env.OPERATIONS_TOKEN}`) {
         return Response.json({ error: "unauthorized" }, { status: 401 });
@@ -154,6 +163,55 @@ const worker = {
         "Haadar: teste controlado do Worker para o canal de alertas.",
       );
       return Response.json({ delivery: result.kind });
+    }
+    if (pathname === "/telegram/webhook" && request.method === "POST") {
+      const secretHeader = request.headers.get("x-telegram-bot-api-secret-token");
+      if (env.OPERATIONS_TOKEN && secretHeader !== env.OPERATIONS_TOKEN) {
+        return Response.json({ error: "unauthorized" }, { status: 401 });
+      }
+      try {
+        const body = await request.json();
+        const { parseTelegramWebhookUpdate } = await import("./notifications/telegram-rich");
+        const parsed = parseTelegramWebhookUpdate(body);
+        if (!parsed.valid || !parsed.extractedUrl || !parsed.chatId) {
+          return Response.json({ status: "ignored", reason: "no_valid_url" });
+        }
+
+        if (env.DATABASE_URL) {
+          const { PostgresStore } = await import("./storage/postgres-store");
+          const { IngestPipeline } = await import("./discovery/ingest-pipeline");
+          const store = new PostgresStore(env.DATABASE_URL);
+          const pipeline = new IngestPipeline(store);
+
+          const result = await pipeline.processObservation({
+            sourceId: "telegram-manual",
+            sourceVacancyId: "manual_" + Date.now(),
+            canonicalUrl: parsed.extractedUrl,
+            title: "Vaga Manual via Telegram",
+            organization: "Pendente de análise",
+            location: "Remoto",
+            workModel: "unknown",
+            descriptionSummary: parsed.rawText,
+            queryId: "manual_inbox",
+            observedAt: new Date().toISOString(),
+          });
+
+          if (env.TELEGRAM_BOT_TOKEN) {
+            const client = createTelegramClient(env.TELEGRAM_BOT_TOKEN, parsed.chatId);
+            const replyMsg = result.status === "ACCEPTED"
+              ? `✅ Vaga registrada no radar!\nPontuação: ${result.score}\n🔗 ${parsed.extractedUrl}`
+              : `⚠️ Vaga descartada pelos filtros de perfil.\nMotivo: ${result.rejectionReason}\n🔗 ${parsed.extractedUrl}`;
+            await client.send(replyMsg);
+          }
+
+          return Response.json({ status: "processed", result });
+        }
+
+        return Response.json({ status: "received", url: parsed.extractedUrl });
+      } catch (err) {
+        const errorName = err instanceof Error ? err.name : "UnknownError";
+        return Response.json({ error: "webhook_failed", errorName }, { status: 500 });
+      }
     }
     return new Response("Not found", { status: 404 });
   },
@@ -210,6 +268,11 @@ const worker = {
       try {
         const adapters = createAdapters(pilotSources);
         const source = pilotSources.find((item) => item.id === parsed.value.adapterId);
+        let postgresStore;
+        if (env.DATABASE_URL) {
+          const { PostgresStore } = await import("./storage/postgres-store");
+          postgresStore = new PostgresStore(env.DATABASE_URL);
+        }
         const outcome = await consumeMessage({
           db: env.DB,
           task: parsed.value,
@@ -220,6 +283,7 @@ const worker = {
           alertChannel: parsed.value.deliveryMode !== "silent" && env.TELEGRAM_BOT_TOKEN && env.TELEGRAM_DESTINATION ? "telegram" : undefined,
           alertDestinationKey: parsed.value.deliveryMode !== "silent" && env.TELEGRAM_BOT_TOKEN && env.TELEGRAM_DESTINATION ? env.TELEGRAM_DESTINATION : undefined,
           sourceHealthKey: source?.healthKey,
+          postgresStore,
         });
         if (parsed.value.deliveryMode !== "silent" && env.TELEGRAM_BOT_TOKEN && env.TELEGRAM_DESTINATION) {
           await dispatchOne(env.DB, createTelegramClient(env.TELEGRAM_BOT_TOKEN, env.TELEGRAM_DESTINATION));
