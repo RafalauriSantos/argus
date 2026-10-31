@@ -305,6 +305,57 @@ const worker = {
         console.error(JSON.stringify({ event: "scheduled_dispatch_failed", errorName }));
       }
     }
+    // Despacha notificações pendentes do Neon PostgreSQL para o Telegram
+    if (env.DATABASE_URL && env.TELEGRAM_BOT_TOKEN && env.TELEGRAM_DESTINATION) {
+      try {
+        const { PostgresStore } = await import("./storage/postgres-store");
+        const { formatFriendlyTelegramJobReply } = await import("./notifications/telegram-friendly");
+        const store = new PostgresStore(env.DATABASE_URL);
+        const pendingRows = await store.fetchAndClaimPendingOutbox(3);
+        const client = createTelegramClient(env.TELEGRAM_BOT_TOKEN, env.TELEGRAM_DESTINATION);
+
+        interface NotificationOutboxPayload {
+          title?: string;
+          organization?: string;
+          score?: number;
+          url?: string;
+          aiSummary?: any;
+        }
+
+        for (const row of pendingRows) {
+          try {
+            const p = (row.payloadJson || {}) as NotificationOutboxPayload;
+            const message = formatFriendlyTelegramJobReply({
+              status: "ACCEPTED",
+              isNew: true,
+              title: p.title || "Nova oportunidade",
+              organization: p.organization,
+              score: p.score ?? 70,
+              canonicalUrl: p.url || "",
+              judgeResult: p.aiSummary,
+            });
+            const sent = await client.send(message);
+            if (sent.kind === "sent") {
+              await store.markOutboxDelivered(row.id);
+            } else if (sent.kind === "failed") {
+              await store.markOutboxFailed(row.id);
+            }
+          } catch (itemErr) {
+            console.error(
+              JSON.stringify({
+                event: "neon_outbox_item_dispatch_failed",
+                rowId: row.id,
+                error: itemErr instanceof Error ? itemErr.message : String(itemErr),
+              })
+            );
+            await store.markOutboxFailed(row.id);
+          }
+        }
+      } catch (error) {
+        const errorName = error instanceof Error ? error.name : "UnknownError";
+        console.error(JSON.stringify({ event: "neon_outbox_dispatch_failed", errorName }));
+      }
+    }
     if (scheduledAt.getUTCHours() === 3 && scheduledAt.getUTCMinutes() === 0) {
       await runRetention(env.DB, {
         operationalEventsDays: 30,

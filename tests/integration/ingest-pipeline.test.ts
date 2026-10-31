@@ -41,6 +41,12 @@ describe("Slice 3: Ingest Pipeline (Adapters -> Scope Analyzer -> Neon)", () => 
     expect(outboxRow).toBeDefined();
     expect(outboxRow.status).toBe("pending");
     expect(outboxRow.payload_json.title).toContain("Compass UOL");
+
+    // Limpeza de teste para não poluir o outbox de produção
+    await client`
+      DELETE FROM haadar.notification_outbox
+      WHERE idempotency_key = ${"alert:" + result.vacancyId}
+    `;
   });
 
   it("CR-3.2: processa observação rejeitada (Sênior) e grava descarte sem duplicar", async () => {
