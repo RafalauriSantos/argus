@@ -28,6 +28,7 @@ export { EnrichmentWorkflow } from "./workflows/enrichment";
 
 export interface Env {
   DB?: D1Database;
+  DATABASE_URL?: string;
   HAADAR_DISCOVERY?: Queue<DiscoveryTaskMessage>;
   ENRICHMENT_WORKFLOW?: Workflow<EnrichmentWorkflowParams>;
   OPERATIONS_TOKEN?: string;
@@ -106,6 +107,14 @@ const worker = {
     const pathname = new URL(request.url).pathname;
     if (pathname === "/health") {
       return Response.json({ service: "haadar", status: "ok" });
+    }
+    if (pathname === "/health/db") {
+      if (!env.DATABASE_URL) {
+        return Response.json({ service: "haadar", database: "unconfigured", error: "DATABASE_URL is not set" }, { status: 503 });
+      }
+      const { checkDatabaseHealth } = await import("./storage/neon");
+      const health = await checkDatabaseHealth(env.DATABASE_URL);
+      return Response.json({ service: "haadar", database: health }, { status: health.connected ? 200 : 503 });
     }
     if (pathname === "/health/operations") {
       if (!env.DB || !env.OPERATIONS_TOKEN || request.headers.get("authorization") !== `Bearer ${env.OPERATIONS_TOKEN}`) {

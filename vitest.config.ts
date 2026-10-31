@@ -4,6 +4,13 @@ import { defineConfig } from "vitest/config";
 export default defineConfig(async () => {
   const migrations = await readD1Migrations("./migrations");
 
+  const fs = await import("fs");
+  let dbUrl = "";
+  try {
+    const content = fs.readFileSync("./.dev.vars", "utf-8");
+    dbUrl = content.split("\n").find(l => l.startsWith("DATABASE_URL="))?.split("=", 2)[1]?.trim().replace(/^["']|["']$/g, "") || "";
+  } catch {}
+
   return {
     plugins: [
       cloudflareTest({
@@ -14,7 +21,7 @@ export default defineConfig(async () => {
           workflows: {
             ENRICHMENT_WORKFLOW: { name: "haadar-enrichment", className: "EnrichmentWorkflow" },
           },
-          bindings: { TEST_MIGRATIONS: migrations },
+          bindings: { TEST_MIGRATIONS: migrations, DATABASE_URL: dbUrl },
         },
       }),
     ],
