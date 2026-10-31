@@ -4,6 +4,7 @@ import type { UserProfile } from "../domain/profile";
 import { DEFAULT_USER_PROFILE } from "../domain/profile";
 import { createVacancy } from "../domain/vacancy";
 import { normalizeJobUrl } from "./url-resolver";
+import type { JudgeEvaluationResult, LlmJudge } from "../ai/llm-judge";
 
 export interface DiscoveredObservation {
   sourceId: string;
@@ -27,12 +28,14 @@ export interface IngestResult {
   score?: number;
   rejectionReason?: string;
   outboxEnqueued: boolean;
+  judgeResult?: JudgeEvaluationResult;
 }
 
 export class IngestPipeline {
   constructor(
     private readonly store: PostgresStore,
-    private readonly profile: UserProfile = DEFAULT_USER_PROFILE
+    private readonly profile: UserProfile = DEFAULT_USER_PROFILE,
+    private readonly llmJudge?: LlmJudge
   ) {}
 
   async processObservation(obs: DiscoveredObservation): Promise<IngestResult> {
@@ -66,7 +69,43 @@ export class IngestPipeline {
       };
     }
 
-    // 3. Se a vaga for aceita, cria a entidade canônica de vaga
+    // 3. Avaliação Semântica com IA (LLM Judge) se habilitado
+    let judgeResult: JudgeEvaluationResult | undefined;
+    if (this.llmJudge) {
+      judgeResult = await this.llmJudge.evaluate({
+        title: obs.title,
+        company: obs.organization || "Empresa",
+        description: obs.descriptionSummary || "",
+        heuristicScore: scope.score,
+      });
+
+      // Se a IA constatar que não é vaga de dev real ou identificar barreiras impeditivas
+      if (!judgeResult.isRealJobOpportunity || judgeResult.hardBarriers.length > 0) {
+        const barrierReason = judgeResult.hardBarriers.length > 0
+          ? judgeResult.hardBarriers.join("; ")
+          : judgeResult.reasoning || "não é vaga técnica de desenvolvedor";
+        const aiRejectionReason = `Descartada pelo juiz de IA: ${barrierReason}`;
+
+        await this.store.recordRejection({
+          source: obs.sourceId,
+          sourceJobId: obs.sourceVacancyId,
+          title: obs.title,
+          stage: "llm_judge",
+          reason: aiRejectionReason,
+          url: canonicalUrl,
+          publishedAt: obs.publishedAt || "",
+        });
+
+        return {
+          status: "REJECTED",
+          rejectionReason: aiRejectionReason,
+          outboxEnqueued: false,
+          judgeResult,
+        };
+      }
+    }
+
+    // 4. Se a vaga for aceita, cria a entidade canônica de vaga
     const vacancy = createVacancy({
       canonicalUrl,
       title: obs.title,
@@ -79,7 +118,7 @@ export class IngestPipeline {
       sourceVacancyId: obs.sourceVacancyId,
     });
 
-    // 4. Upsert atômico no Neon PostgreSQL
+    // 5. Upsert atômico no Neon PostgreSQL
     const upsert = await this.store.upsertVacancy({
       id: vacancy.id,
       canonicalUrl: vacancy.canonicalUrl,
@@ -96,18 +135,28 @@ export class IngestPipeline {
       roundId: obs.roundId,
     });
 
-    // 5. Se foi recém-inserida e atingiu o piso de relevância (score >= 60), enfileira no Outbox do Telegram
+    // 6. Se foi recém-inserida e atingiu o piso de relevância (score >= 60), enfileira no Outbox do Telegram
     let outboxEnqueued = false;
-    if (upsert.inserted && scope.score >= 60) {
+    const finalScore = judgeResult ? judgeResult.score : scope.score;
+
+    if (upsert.inserted && finalScore >= 60) {
       const outboxPayload = {
         title: `${vacancy.title} · ${vacancy.organization || "Empresa"}`,
         organization: vacancy.organization,
         location: vacancy.location,
         url: vacancy.canonicalUrl,
-        score: scope.score,
+        score: finalScore,
         matchedStack: scope.matchedStack,
         cautions: scope.cautions,
         stage: "final",
+        aiSummary: judgeResult ? {
+          source: judgeResult.source,
+          category: judgeResult.category,
+          recommendation: judgeResult.recommendation,
+          reasoning: judgeResult.reasoning,
+          matchedEvidence: judgeResult.matchedEvidence,
+          trainableGaps: judgeResult.trainableGaps,
+        } : undefined,
       };
 
       outboxEnqueued = await this.store.enqueueNotification(
@@ -120,8 +169,9 @@ export class IngestPipeline {
     return {
       status: "ACCEPTED",
       vacancyId: upsert.vacancyId,
-      score: scope.score,
+      score: finalScore,
       outboxEnqueued,
+      judgeResult,
     };
   }
 }

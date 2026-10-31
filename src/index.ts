@@ -6,6 +6,7 @@ import { GoogleNewsRssAdapter } from "./adapters/rss";
 import { LinkedInGuestAdapter } from "./adapters/linkedin-guest";
 import { GeekHunterAdapter } from "./adapters/geekhunter";
 import type { SourceAdapter } from "./adapters/adapter";
+import type { LlmJudge } from "./ai/llm-judge";
 import { consumeMessage } from "./queue/consumer";
 import type { DiscoveryTaskMessage } from "./queue/messages";
 import { parseMessage } from "./queue/messages";
@@ -36,6 +37,8 @@ export interface Env {
   TELEGRAM_BOT_TOKEN?: string;
   TELEGRAM_DESTINATION?: string;
   ADMIN_TRIGGER_TOKEN?: string;
+  GEMINI_API_KEY?: string;
+  OPENROUTER_API_KEY?: string;
 }
 
 export function createAdapters(sources: SourceDefinition[], fetcher?: typeof fetch): Record<string, SourceAdapter> {
@@ -215,6 +218,8 @@ const worker = {
             const { PostgresStore } = await import("./storage/postgres-store");
             const { IngestPipeline } = await import("./discovery/ingest-pipeline");
             const { resolveShortUrl } = await import("./discovery/url-resolver");
+            const { LlmJudge } = await import("./ai/llm-judge");
+            const { DEFAULT_USER_PROFILE } = await import("./domain/profile");
 
             const canonicalUrl = await resolveShortUrl(parsed.extractedUrl, fetch);
             if (!canonicalUrl) {
@@ -225,8 +230,18 @@ const worker = {
               return Response.json({ status: "ignored", reason: "untrusted_or_invalid_url" });
             }
 
+            let judge: LlmJudge | undefined;
+            if (env.GEMINI_API_KEY || env.OPENROUTER_API_KEY) {
+              judge = new LlmJudge({
+                profile: DEFAULT_USER_PROFILE,
+                geminiApiKey: env.GEMINI_API_KEY,
+                openrouterApiKey: env.OPENROUTER_API_KEY,
+                fetcher: fetch,
+              });
+            }
+
             const store = new PostgresStore(env.DATABASE_URL);
-            const pipeline = new IngestPipeline(store);
+            const pipeline = new IngestPipeline(store, DEFAULT_USER_PROFILE, judge);
 
             const result = await pipeline.processObservation({
               sourceId: "telegram-manual",
@@ -243,9 +258,25 @@ const worker = {
 
             if (env.TELEGRAM_BOT_TOKEN) {
               const client = createTelegramClient(env.TELEGRAM_BOT_TOKEN, parsed.chatId);
-              const replyMsg = result.status === "ACCEPTED"
-                ? `✅ Vaga registrada no radar!\nPontuação: ${result.score}\n🔗 ${canonicalUrl}`
-                : `⚠️ Vaga descartada pelos filtros de perfil.\nMotivo: ${result.rejectionReason}\n🔗 ${canonicalUrl}`;
+              let replyMsg = "";
+              if (result.status === "ACCEPTED") {
+                replyMsg = `✅ <b>Vaga aceita e registrada no radar!</b>\n` +
+                  `🎯 <b>Pontuação:</b> ${result.score}/100\n`;
+                if (result.judgeResult) {
+                  replyMsg += `🤖 <b>Parecer IA (${result.judgeResult.source}):</b> ${result.judgeResult.category} (${result.judgeResult.recommendation})\n` +
+                    `💡 <i>${result.judgeResult.reasoning}</i>\n` +
+                    (result.judgeResult.matchedEvidence.length > 0 ? `✨ <b>Evidências:</b> ${result.judgeResult.matchedEvidence.join(", ")}\n` : "") +
+                    (result.judgeResult.trainableGaps.length > 0 ? `📚 <b>Lacunas a treinar:</b> ${result.judgeResult.trainableGaps.join(", ")}\n` : "");
+                }
+                replyMsg += `🔗 ${canonicalUrl}`;
+              } else {
+                replyMsg = `⚠️ <b>Vaga descartada pelos filtros</b>\n` +
+                  `🛑 <b>Motivo:</b> ${result.rejectionReason}\n`;
+                if (result.judgeResult?.reasoning) {
+                  replyMsg += `💡 <i>${result.judgeResult.reasoning}</i>\n`;
+                }
+                replyMsg += `🔗 ${canonicalUrl}`;
+              }
               await client.send(replyMsg);
             }
 
