@@ -239,43 +239,37 @@ const worker = {
               });
             }
 
+            const { extractJobDetailsFromMessage, formatFriendlyTelegramJobReply } = await import("./notifications/telegram-friendly");
+            const jobDetails = extractJobDetailsFromMessage(parsed.rawText, canonicalUrl);
+
             const store = new PostgresStore(env.DATABASE_URL);
             const pipeline = new IngestPipeline(store, DEFAULT_USER_PROFILE, judge);
 
             const result = await pipeline.processObservation({
               sourceId: "telegram-manual",
-              sourceVacancyId: "manual_" + Date.now(),
+              sourceVacancyId: jobDetails.sourceVacancyId,
               canonicalUrl,
-              title: "Vaga Manual via Telegram",
-              organization: "Pendente de análise",
+              title: jobDetails.title,
+              organization: jobDetails.organization,
               location: "Remoto",
               workModel: "unknown",
-              descriptionSummary: parsed.rawText,
+              descriptionSummary: jobDetails.description,
               queryId: "manual_inbox",
               observedAt: new Date().toISOString(),
             });
 
             if (env.TELEGRAM_BOT_TOKEN) {
               const client = createTelegramClient(env.TELEGRAM_BOT_TOKEN, parsed.chatId);
-              let replyMsg = "";
-              if (result.status === "ACCEPTED") {
-                replyMsg = `✅ <b>Vaga aceita e registrada no radar!</b>\n` +
-                  `🎯 <b>Pontuação:</b> ${result.score}/100\n`;
-                if (result.judgeResult) {
-                  replyMsg += `🤖 <b>Parecer IA (${result.judgeResult.source}):</b> ${result.judgeResult.category} (${result.judgeResult.recommendation})\n` +
-                    `💡 <i>${result.judgeResult.reasoning}</i>\n` +
-                    (result.judgeResult.matchedEvidence.length > 0 ? `✨ <b>Evidências:</b> ${result.judgeResult.matchedEvidence.join(", ")}\n` : "") +
-                    (result.judgeResult.trainableGaps.length > 0 ? `📚 <b>Lacunas a treinar:</b> ${result.judgeResult.trainableGaps.join(", ")}\n` : "");
-                }
-                replyMsg += `🔗 ${canonicalUrl}`;
-              } else {
-                replyMsg = `⚠️ <b>Vaga descartada pelos filtros</b>\n` +
-                  `🛑 <b>Motivo:</b> ${result.rejectionReason}\n`;
-                if (result.judgeResult?.reasoning) {
-                  replyMsg += `💡 <i>${result.judgeResult.reasoning}</i>\n`;
-                }
-                replyMsg += `🔗 ${canonicalUrl}`;
-              }
+              const replyMsg = formatFriendlyTelegramJobReply({
+                status: result.status,
+                isNew: result.inserted ?? true,
+                title: jobDetails.title,
+                organization: jobDetails.organization,
+                score: result.score ?? 0,
+                canonicalUrl,
+                rejectionReason: result.rejectionReason,
+                judgeResult: result.judgeResult,
+              });
               await client.send(replyMsg);
             }
 
