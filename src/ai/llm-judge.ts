@@ -109,7 +109,7 @@ export class LlmJudge {
     this.geminiModel = options.geminiModel || "gemini-3.5-flash-lite";
     this.openrouterApiKey = options.openrouterApiKey;
     this.openrouterModel = options.openrouterModel || "google/gemini-2.5-flash-lite";
-    this.fetcher = options.fetcher || fetch;
+    this.fetcher = (options.fetcher ?? globalThis.fetch).bind(globalThis);
   }
 
   async evaluate(input: JudgeEvaluationInput): Promise<JudgeEvaluationResult> {

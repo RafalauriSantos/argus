@@ -143,6 +143,30 @@ const worker = {
         notify ? "live" : "silent",
       ), { status: 202 });
     }
+    if (pathname === "/admin/ai-test") {
+      const hasGemini = Boolean(env.GEMINI_API_KEY);
+      const hasOpenRouter = Boolean(env.OPENROUTER_API_KEY);
+      let geminiRes: any = null;
+      let geminiError: any = null;
+      if (env.GEMINI_API_KEY) {
+        try {
+          const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent`, {
+            method: "POST",
+            headers: {
+              "x-goog-api-key": env.GEMINI_API_KEY,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              contents: [{ role: "user", parts: [{ text: "ping" }] }],
+            }),
+          });
+          geminiRes = { status: res.status, body: await res.text() };
+        } catch (e: any) {
+          geminiError = e.message;
+        }
+      }
+      return Response.json({ hasGemini, hasOpenRouter, geminiRes, geminiError });
+    }
     if (pathname === "/admin/dispatch" && request.method === "POST") {
       if (!env.ADMIN_TRIGGER_TOKEN || request.headers.get("authorization") !== `Bearer ${env.ADMIN_TRIGGER_TOKEN}`) {
         return Response.json({ error: "unauthorized" }, { status: 401 });
@@ -236,7 +260,6 @@ const worker = {
                 profile: DEFAULT_USER_PROFILE,
                 geminiApiKey: env.GEMINI_API_KEY,
                 openrouterApiKey: env.OPENROUTER_API_KEY,
-                fetcher: fetch,
               });
             }
 
