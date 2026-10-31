@@ -219,6 +219,11 @@ const worker = {
       try {
         const adapters = createAdapters(pilotSources);
         const source = pilotSources.find((item) => item.id === parsed.value.adapterId);
+        let postgresStore;
+        if (env.DATABASE_URL) {
+          const { PostgresStore } = await import("./storage/postgres-store");
+          postgresStore = new PostgresStore(env.DATABASE_URL);
+        }
         const outcome = await consumeMessage({
           db: env.DB,
           task: parsed.value,
@@ -229,6 +234,7 @@ const worker = {
           alertChannel: parsed.value.deliveryMode !== "silent" && env.TELEGRAM_BOT_TOKEN && env.TELEGRAM_DESTINATION ? "telegram" : undefined,
           alertDestinationKey: parsed.value.deliveryMode !== "silent" && env.TELEGRAM_BOT_TOKEN && env.TELEGRAM_DESTINATION ? env.TELEGRAM_DESTINATION : undefined,
           sourceHealthKey: source?.healthKey,
+          postgresStore,
         });
         if (parsed.value.deliveryMode !== "silent" && env.TELEGRAM_BOT_TOKEN && env.TELEGRAM_DESTINATION) {
           await dispatchOne(env.DB, createTelegramClient(env.TELEGRAM_BOT_TOKEN, env.TELEGRAM_DESTINATION));

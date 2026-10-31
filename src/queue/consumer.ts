@@ -10,6 +10,9 @@ import { defaultRelevanceProfile } from "../portfolio/sources";
 import type { EnrichmentWorkflowParams } from "../workflows/enrichment";
 import { getSourceHealth, recordSourceSuccess, recordSourceTerminalFailure } from "../storage/source-health";
 
+import type { PostgresStore } from "../storage/postgres-store";
+import { IngestPipeline } from "../discovery/ingest-pipeline";
+
 export type ConsumeAction =
   | { action: "ack"; outcome: "completed" | "terminal" | "already_terminal"; reason?: string }
   | { action: "retry"; outcome: "retryable"; delaySeconds: number }
@@ -28,6 +31,8 @@ export interface ConsumerInput {
   alertDestinationKey?: string;
   /** Multiple tasks that share an upstream contract can share one circuit. */
   sourceHealthKey?: string;
+  /** Neon Postgres storage instance for unified ingestion */
+  postgresStore?: PostgresStore;
 }
 
 export async function consumeMessage(input: ConsumerInput): Promise<ConsumeAction> {
@@ -78,6 +83,24 @@ export async function consumeMessage(input: ConsumerInput): Promise<ConsumeActio
         originKind: observation.originKind ?? "synthetic",
       };
       const vacancyId = await persistCanonicalObservation(input.db, persistedObservation);
+      if (input.postgresStore && persistedObservation.originKind === "real") {
+        const pipeline = new IngestPipeline(input.postgresStore);
+        await pipeline.processObservation({
+          sourceId: observation.sourceId,
+          sourceVacancyId: observation.sourceVacancyId,
+          canonicalUrl: observation.canonicalUrl,
+          title: observation.title,
+          organization: observation.organization,
+          location: observation.location,
+          workModel: observation.workModel,
+          descriptionSummary: observation.descriptionSummary,
+          publishedAt: observation.publishedAt,
+          queryId: observation.queryId,
+          observedAt: observation.observedAt,
+          fingerprint: observation.fingerprint,
+          roundId: input.task.roundId,
+        });
+      }
       if (persistedObservation.originKind === "real") {
         const discoveryQuery = initialQueries.find((query) => query.id === observation.queryId);
         if (discoveryQuery) {

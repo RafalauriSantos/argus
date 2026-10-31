@@ -20,3 +20,13 @@ Padrão derivado do `casa-de-leiloes` e `ub-mode`.
 | **CR-1.4** | Escopo: Barreira PCD | Vagas afirmativas ou exclusivas para PCD são rejeitadas determinísticamente. | `tests/decision/scope-analyzer.test.ts` | 🟢 GREEN |
 | **CR-1.5** | Escopo: Barreira Graduação | Vagas com superior completo como requisito eliminatório são rejeitadas. | `tests/decision/scope-analyzer.test.ts` | 🟢 GREEN |
 | **CR-1.6** | Escopo: Localização | Vagas presenciais fora da região Tatuí/Sorocaba são rejeitadas; remoto é 100% livre. | `tests/decision/scope-analyzer.test.ts` | 🟢 GREEN |
+
+---
+
+## Núcleo 3: Pipeline de Ingestão Integrada (Adapters -> Scope Analyzer -> Neon)
+
+| ID | Requisito de Negócio / Engenharia | Comportamento Esperado | Teste Automatizado | Status |
+|---|---|---|---|---|
+| **CR-3.1** | Triagem na Ingestão do Adaptador | Quando o adapter descobre uma vaga, ela é avaliada pelo `evaluateVacancyScope`. Se elegível, salva em `haadar.vacancies`. | `tests/integration/ingest-pipeline.test.ts` | 🟢 GREEN |
+| **CR-3.2** | Auditoria de Descarte sem Duplicação | Se a vaga for rejeitada pelo Scope Analyzer (ex: Sênior ou PCD), grava em `haadar.candidate_rejections` com incremento. | `tests/integration/ingest-pipeline.test.ts` | 🟢 GREEN |
+| **CR-3.3** | Enfileiramento de Alertas Elegíveis | Vagas aprovadas com score >= 60 geram registro pendente na fila `haadar.notification_outbox`. | `tests/integration/ingest-pipeline.test.ts` | 🟢 GREEN |
