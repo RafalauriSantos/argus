@@ -182,7 +182,12 @@ export const geekhunterSources: GeekHunterSourceDefinition[] = [
     id: "geekhunter:vagas",
     adapterId: "geekhunter",
     organization: "GeekHunter",
-    allowedHosts: ["www.geekhunter.com.br", "geekhunter.com.br"],
+    allowedHosts: [
+      "www.geekhunter.com",
+      "geekhunter.com",
+      "www.geekhunter.com.br",
+      "geekhunter.com.br",
+    ],
     fetchStrategy: "board_once",
     applicableQueryFamilies: ["BROAD", "ROLE", "STACK", "CONTEXT"],
     limits: { timeoutMs: 10_000, maxResponseBytes: 512 * 1024, maxRequestsPerTask: 1, maxRecords: 30 },
