@@ -60,3 +60,16 @@ Padrão derivado do `casa-de-leiloes` e `ub-mode`.
 | **CR-7.1** | Densidade de Evidência da Vaga | Classifica o nível de detalhe do anúncio (`LOW_EVIDENCE`, `MEDIUM_EVIDENCE`, `HIGH_EVIDENCE`) para não gastar tokens em vagas rasas/fantasmas. | `tests/decision/evidence.test.ts` | 🟢 GREEN |
 | **CR-7.2** | Expansão de Fontes GitHub | Adiciona repositórios orgânicos de vagas à lista de adaptadores do portfólio (`backend-br`, `soujava`, `react-brasil`, `nodejsdevbr`). | `tests/portfolio/sources.test.ts` | 🟢 GREEN |
 | **CR-7.3** | Relatório Diário de Funil no Telegram | Agrega do Neon o total de vagas vistas, aprovadas e o ranking dos principais motivos de descarte em formato de resumo diário. | `tests/notifications/daily-report.test.ts` | 🟢 GREEN |
+
+---
+
+## Núcleo 8: Comandos Interativos do Telegram Bot
+
+| ID | Requisito de Negócio / Engenharia | Comportamento Esperado | Teste Automatizado | Status |
+|---|---|---|---|---|
+| **CR-8.1** | Normalização & Parser de Comandos | Reconhece comandos com/sem barra, minúsculas/maiúsculas, remove `@botname` e ignora mensagens que contenham URLs. | `tests/notifications/telegram-commands.test.ts` | 🟢 GREEN |
+| **CR-8.2** | Resumo Operacional (`/status`) | Consulta conectividade com o banco Neon Postgres, total de vagas em radar e hora da última coleta. | `tests/notifications/telegram-commands.test.ts` | 🟢 GREEN |
+| **CR-8.3** | Histórico Recente (`/ultimas`) | Traz as últimas 5 decisões de descarte/aprovação com timestamp formatado no horário de Brasília e motivo explícito. | `tests/notifications/telegram-commands.test.ts` | 🟢 GREEN |
+| **CR-8.4** | Diagnóstico de Gargalos (`/problemas` & `/fontes`) | Agrupa os maiores motivos de descarte e volume de vagas por fonte nas últimas 24 horas. | `tests/notifications/telegram-commands.test.ts` | 🟢 GREEN |
+| **CR-8.5** | Integração no Webhook | Rota `/telegram/webhook` detecta se a mensagem é comando ou URL, despacha e responde diretamente no chat. | `tests/notifications/telegram-rich.test.ts` | 🟢 GREEN |
+

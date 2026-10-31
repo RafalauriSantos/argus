@@ -19,4 +19,7 @@ Metodologia derivada do `casa-de-leiloes`.
 | **3** | **Pipeline de Ingestão: Adapters -> Scope Analyzer -> Neon** | Alto | 🟢 Concluído | Adapters (Gupy, Greenhouse, etc.) passam pelo ScopeAnalyzer e gravam no Neon sem duplicação e com auditoria de rejeição. |
 | **4** | **Juiz de IA (LLM Judge Semântico)** | Alto | 🟢 Concluído | Chamada controlada de IA pós-filtro determinístico avaliando compatibilidade de stack e lacunas a treinar. |
 | **5** | **Telegram Rico & Webhook Inbox** | Alto | 🟢 Concluído | Layout rico do WorkHunter portado para o Telegram + rota de webhook para envio de links manuais pelo celular. |
-| **6** | **Virada de Chave & Aposentadoria Local** | Normal | ⚪ Pendente | Teste de 48h em paralelo, parada dos serviços locais do systemd e arquivamento definitivo. |
+| **6** | **Virada de Chave & Aposentadoria Local** | Normal | 🟢 Concluído | Serviços locais systemd desativados (`workhunter.service`, `workhunter-monitor.service`). Operação 100% transferida para a nuvem. |
+| **7** | **Maximização de Inteligência & Relatório Diário** | Normal | 🟢 Concluído | Análise de densidade de evidência (`LOW`, `MEDIUM`, `HIGH`), novas fontes GitHub e relatório diário consolidado das 24h disparado via cron das 20h BRT. |
+| **8** | **Comandos Interativos no Telegram** | Normal | 🟢 Concluído | Processamento no webhook de `/start`, `/ajuda`, `/relatorio`, `/status`, `/ultimas`, `/fontes`, `/problemas` direto pelo bot. |
+
