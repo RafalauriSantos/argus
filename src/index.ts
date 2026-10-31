@@ -271,7 +271,7 @@ const worker = {
               observedAt: new Date().toISOString(),
             });
 
-            if (env.TELEGRAM_BOT_TOKEN) {
+            if (env.TELEGRAM_BOT_TOKEN && result.status === "ACCEPTED") {
               const client = createTelegramClient(env.TELEGRAM_BOT_TOKEN, parsed.chatId);
               const replyMsg = formatFriendlyTelegramJobReply({
                 status: result.status,

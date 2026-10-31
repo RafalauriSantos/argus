@@ -84,59 +84,49 @@ export function formatFriendlyTelegramJobReply(options: FriendlyJobReplyOptions)
   // 1. Vaga já cadastrada no radar (Anti-duplicidade)
   if (status === "ACCEPTED" && !isNew) {
     return [
-      `ℹ️ <b>Essa oportunidade já está registrada no seu radar!</b>`,
-      ``,
+      `ℹ️ <b>Já cadastrada no seu radar</b>`,
       `💼 <b>${title}</b>`,
-      `🏢 ${company}`,
-      `⭐ Compatibilidade: <b>${score}%</b>`,
+      `🏢 ${company} · ${score}% match`,
       ``,
-      `🔗 <a href="${canonicalUrl}">${canonicalUrl}</a>`,
+      `🔗 <a href="${canonicalUrl}">Acessar vaga</a>`,
     ].join("\n");
   }
 
-  // 2. Vaga aceita e recém-inserida
+  // 2. Vaga aceita e recém-inserida (Minimalista)
   if (status === "ACCEPTED") {
-    const isAi = judgeResult && judgeResult.source !== "heuristic_fallback";
-
     const lines: string[] = [
-      `🎯 <b>Excelente oportunidade encontrada!</b>`,
-      ``,
-      `💼 <b>${title}</b>`,
+      `🎯 <b>${title}</b>`,
       `🏢 ${company} · Remoto`,
-      `⭐ <b>Compatibilidade com seu perfil:</b> ${score}%`,
+      `⭐ <b>Match:</b> ${score}%`,
       ``,
     ];
 
-    if (isAi && judgeResult) {
-      lines.push(`🤖 <b>Análise do Argus (IA):</b>`);
-      lines.push(`${judgeResult.reasoning}`);
-      lines.push(``);
-
+    if (judgeResult) {
       if (judgeResult.matchedEvidence && judgeResult.matchedEvidence.length > 0) {
-        lines.push(`✨ <b>Seus pontos fortes:</b> ${judgeResult.matchedEvidence.join(", ")}`);
+        lines.push(`✨ <b>Pontos fortes:</b> ${judgeResult.matchedEvidence.join(", ")}`);
       }
       if (judgeResult.trainableGaps && judgeResult.trainableGaps.length > 0) {
-        lines.push(`📚 <b>Dica de estudo:</b> ${judgeResult.trainableGaps.join(", ")}`);
+        lines.push(`📚 <b>Estudar:</b> ${judgeResult.trainableGaps.join(", ")}`);
       }
-      lines.push(``);
-    } else {
-      lines.push(`🎯 <b>Boa oportunidade para o seu perfil!</b>`);
-      lines.push(`🤖 <b>Análise do Radar:</b> Vaga compatível com suas tecnologias principais e nível de experiência desejado.`);
-      lines.push(``);
+      if (
+        (judgeResult.matchedEvidence && judgeResult.matchedEvidence.length > 0) ||
+        (judgeResult.trainableGaps && judgeResult.trainableGaps.length > 0)
+      ) {
+        lines.push(``);
+      }
     }
 
-    lines.push(`🔗 <a href="${canonicalUrl}">Acessar oportunidade no site</a>`);
+    lines.push(`🔗 <a href="${canonicalUrl}">Ver vaga no site</a>`);
     return lines.join("\n");
   }
 
-  // 3. Vaga filtrada/rejeitada
+  // 3. Vaga filtrada/rejeitada (Minimalista - uso interno/fallback)
   return [
-    `⚠️ <b>Oportunidade filtrada pelo radar</b>`,
-    ``,
+    `⚠️ <b>Vaga fora do perfil</b>`,
     `💼 <b>${title}</b>`,
     `🏢 ${company}`,
-    `🛑 <b>Critério:</b> ${rejectionReason || "Fora do escopo do perfil"}`,
+    `🛑 <b>Motivo:</b> ${rejectionReason || "Fora do escopo do perfil"}`,
     ``,
-    `🔗 <a href="${canonicalUrl}">Conferir link da vaga</a>`,
+    `🔗 <a href="${canonicalUrl}">Conferir link</a>`,
   ].join("\n");
 }
