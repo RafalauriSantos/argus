@@ -20,6 +20,7 @@ import { getOperationalHealth } from "./observability/health";
 import { createTelegramClient } from "./notifications/telegram";
 import { dispatchOne } from "./notifications/dispatcher";
 import { reconcileConfirmedDeliveries } from "./notifications/reconcile";
+import { isNeonOutboxSlot } from "./notifications/outbox-schedule";
 import { runRetention } from "./maintenance/retention";
 import { initialQueries } from "./portfolio/query-portfolio";
 import { pilotSources } from "./portfolio/sources";
@@ -318,8 +319,8 @@ const worker = {
         console.error(JSON.stringify({ event: "scheduled_dispatch_failed", errorName }));
       }
     }
-    // Despacha notificações pendentes do Neon PostgreSQL para o Telegram
-    if (env.DATABASE_URL && env.TELEGRAM_BOT_TOKEN && env.TELEGRAM_DESTINATION) {
+    // Despacha notificações pendentes do Neon PostgreSQL para o Telegram (a cada 3h, para o Neon poder suspender)
+    if (isNeonOutboxSlot(scheduledAt) && env.DATABASE_URL && env.TELEGRAM_BOT_TOKEN && env.TELEGRAM_DESTINATION) {
       try {
         const { PostgresStore } = await import("./storage/postgres-store");
         const { formatFriendlyTelegramJobReply } = await import("./notifications/telegram-friendly");
